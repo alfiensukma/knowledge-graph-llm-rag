@@ -1,6 +1,6 @@
 import os
 
-from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
+from langchain.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_neo4j import Neo4jGraph
@@ -29,9 +29,12 @@ graph = Neo4jGraph(
     password=os.getenv('NEO4J_PASSWORD')
 )
 
+# set allowed node
 doc_transformer = LLMGraphTransformer(
     llm=llm,
-    )
+    # allowed_nodes=["Technology", "Concept", "Skill", "Event", "Person", "Object", "Course", "Module", "Lesson"],
+    # node_properties=["name", "description"],
+)
 
 # Load and split the documents
 loader = DirectoryLoader(DOCS_PATH, glob="**/*.pdf", loader_cls=PyPDFLoader)
