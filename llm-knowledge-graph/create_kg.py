@@ -1,27 +1,42 @@
 import os
 
-from langchain.document_loaders import DirectoryLoader, PyPDFLoader
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain_neo4j import Neo4jGraph
-from langchain_openai import ChatOpenAI
 from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_community.graphs.graph_document import Node, Relationship
+from langchain_openai import OpenAIEmbeddings
+from langchain_nomic import NomicEmbeddings
+from langchain_openai import ChatOpenAI
 
 from dotenv import load_dotenv
 load_dotenv()
 
 DOCS_PATH = "llm-knowledge-graph/data/pdfs"
 
+# using openAI API KEY
 llm = ChatOpenAI(
     openai_api_key=os.getenv('OPENAI_API_KEY'), 
     model_name="gpt-4o"
 )
 
+# using LM Studio LLMs
+# llm = ChatOpenAI(
+#     base_url=os.getenv('LMSTUDIO_BASE_URL'),
+#     model_name="deepseek-r1-distill-llama-8b",
+#     openai_api_key="lm-studio",
+# )
+
+# using openAI API KEY
 embedding_provider = OpenAIEmbeddings(
     openai_api_key=os.getenv('OPENAI_API_KEY'),
     model="text-embedding-3-large"
-    )
+)
+
+# using Nomic
+# embedding_provider = NomicEmbeddings(
+#     model="nomic-embed-text-v1.5",
+# )
 
 graph = Neo4jGraph(
     url=os.getenv('NEO4J_URI'),
@@ -32,8 +47,8 @@ graph = Neo4jGraph(
 # set allowed node
 doc_transformer = LLMGraphTransformer(
     llm=llm,
-    # allowed_nodes=["Technology", "Concept", "Skill", "Event", "Person", "Object", "Course", "Module", "Lesson"],
-    # node_properties=["name", "description"],
+    allowed_nodes=["Paper", "Author", "Publication", "Reference", "Topic", "Institution", "Conference", "Journal", "Document"],
+    node_properties=["title", "year", "authors", "references", "topics", "institution", "doi", "publisher"],
 )
 
 # Load and split the documents
@@ -108,3 +123,6 @@ graph.query("""
     `vector.dimensions`: 1536,
     `vector.similarity_function`: 'cosine'
     }};""")
+
+# vector.dimensions nomic.v.1.5 = 256
+# vector.dimensions openai.text-embedding-3-large = 1536

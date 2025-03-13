@@ -6,7 +6,7 @@ st.set_page_config("Ebert", page_icon="🎙️")
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Hi, I'm the GraphAcademy Chatbot!  How can I help you?"},
+        {"role": "assistant", "content": "Hi, I'm the neiflaAI Chatbot!  How can I help you?"},
     ]
 
 # Submit handler
