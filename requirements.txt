@@ -15,3 +15,8 @@ pydantic_core
 streamlit
 json-repair
 langchain-nomic
+rdflib
+langchain-google-genai
+rapidfuzz
+numpy
+PyMuPDF
