@@ -21,8 +21,8 @@ class GraphService:
             p.publisher = $paper.publisher,
             p.venue = $paper.venue,
             p.publicationDate = $paper.publication_date,
-            p.filename = $filename
-
+            p.filename = $filename,
+            p.topics = $paper.topics
         WITH p, $paper.venue AS venueName
         FOREACH (_ IN CASE WHEN venueName IS NOT NULL THEN [1] ELSE [] END |
             MERGE (j:Journal {id: apoc.text.slug(venueName, '_')})
@@ -63,7 +63,8 @@ class GraphService:
                 "venue": venue,
                 "publication_date": paper_data.get('publication_date', None),
                 "authors": paper_data.get('authors', []),
-                "references": paper_data.get('references', [])
+                "references": paper_data.get('references', []),
+                "topics": paper_data.get('topics', [])
             }
         }
         try:
@@ -75,7 +76,7 @@ class GraphService:
             return None
 
     def link_paper_to_topics(self, paper_uuid: str, topic_labels: list):
-        """Links the Paper node to its validated Topic nodes using UUID."""
+        """Links the Paper node to its validated Topic nodes using UUID and updates topics property."""
         if not topic_labels:
             print(f"  > No topics to link for paper with UUID: {paper_uuid}")
             return
@@ -96,13 +97,15 @@ class GraphService:
                 self.graph.query(
                     """
                     MATCH (p:Paper {id: $uuid})
+                    SET p.topics = $labels
+                    WITH p
                     UNWIND $labels AS topic_label
                     MATCH (t:Topic {label: topic_label})
                     MERGE (p)-[:HAS_TOPIC]->(t)
                     """,
                     {"uuid": paper_uuid, "labels": existing_labels}
                 )
-                print(f"  > Linked paper with UUID {paper_uuid} to {len(existing_labels)} topics: {existing_labels}")
+                print(f"  > Linked paper with UUID {paper_uuid} to {len(existing_labels)} topics and updated topics property: {existing_labels}")
             else:
                 print(f"  > No matching topics found in Neo4j for paper with UUID {paper_uuid}.")
         except Exception as e:

@@ -23,7 +23,7 @@ def main():
     # Dapatkan rekomendasi untuk paper dengan ID tertentu
     user_paper_ids = [
         "21c791b5-d21c-4581-a2e7-66151ef7c3b8",
-        "50731104-49e1-490e-ba2e-fc7c7980a8fe"
+        "8c6f5081-8050-4470-ac18-2eb9637bef02"
     ]
     print(f"\n--- Generating Recommendations for Paper IDs: {user_paper_ids} ---")
     recommendations = recommendation_service.get_llm_recommendations(user_paper_ids)

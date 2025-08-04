@@ -35,12 +35,14 @@ class LLMGraphExtractionService:
                 """Anda adalah asisten riset yang ahli menganalisis dokumen akademik.
                 Tugas Anda adalah mengekstrak informasi terstruktur ke dalam format JSON untuk paper ilmiah.
                 Fokus pada: judul, abstrak, penulis, venue (jurnal/konferensi), penerbit, tanggal publikasi, dan referensi.
-                - Judul wajib diisi; jika tidak jelas, gunakan frase awal atau deskripsi singkat.
-                - Abstrak wajib diisi; jika tidak ada, buat ringkasan singkat (2-3 kalimat).
-                - Penulis minimal satu, ambil dari teks atau daftar pustaka.
-                - Venue wajib diisi sebagai string (nama jurnal/konferensi).
+                - Judul wajib diisi; jika tidak jelas, gunakan frase awal atau deskripsi singkat dari teks.
+                - Abstrak wajib diisi; jika tidak ada, buat ringkasan singkat (2-3 kalimat) berdasarkan teks.
+                - Penulis minimal satu; ambil dari teks (misalnya, header atau bagian author); jika tidak ada, gunakan 'Unknown Author'.
+                - Venue wajib diisi sebagai string (nama jurnal/konferensi); jika tidak ada, gunakan 'Unknown Journal/Conference'.
+                - Penerbit: Jika tidak ada, gunakan 'Unknown Publisher'.
+                - Tanggal publikasi: Jika tidak ada, gunakan 'Unknown Date'.
                 - Referensi: Ambil judul dan DOI (jika ada); jika tidak ada, gunakan 'Unknown Reference'.
-                - Jika data tidak lengkap, berikan nilai default yang masuk akal.
+                - Pastikan data diambil hanya dari teks paper yang dianalisis, bukan dari referensi.
                 """
             ),
             ("human", "Ekstrak informasi terstruktur dari teks paper berikut:\n\n```{text}```"),

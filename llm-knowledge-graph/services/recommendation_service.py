@@ -30,24 +30,29 @@ class RecommendationService:
                   - Gunakan topik per paper sebagai transaksi, cari itemset (kombinasi topik) yang sering muncul 
                     dengan `user_topics`.
                   - Normalisasi topik serupa (misalnya, "neural networks" = "neural network").
-                  - Pertimbangkan hubungan hierarki (misalnya, "neural networks" terkait "Machine Learning").
                   - Pilih paper dengan >=2 topik yang sama atau terkait erat dengan `user_topics`, dengan co-occurrence tinggi.
-                  - Abaikan duplikasi topik dalam satu paper.
                 - Jangan rekomendasikan paper dengan ID di `user_paper_ids`.
                 - Output: JSON berisi daftar paper: [{{"filename": "<nama_file>", "title": "<judul>", 
                   "topics": ["<topik1>", "<topik2>"]}}], atau [] jika tidak ada.
                 Contoh:
-                  - Input: user_topics=["machine learning", "decision support systems"], 
-                    all_papers=[{{"id": "1", "filename": "paper1.pdf", "title": "ML Study", 
-                    "topics": ["machine learning", "neural networks"]}}, {{"id": "2", "filename": "paper2.pdf", 
-                    "title": "Decision Systems", "topics": ["decision support systems", "neural networks"]}}]
-                  - Output: [{{"filename": "paper1.pdf", "title": "ML Study", "topics": ["machine learning", "neural networks"]}},
-                    {{"filename": "paper2.pdf", "title": "Decision Systems", "topics": ["decision support systems", "neural networks"]}}]
+                  - Input: 
+                    user_topics=["machine learning", "decision support systems"], 
+                    all_papers=[{{
+                      "id": "1", "filename": "paper1.pdf", 
+                      "title": "ML Study", 
+                      "topics": ["machine learning", "neural networks"]
+                    }}]
+                  - Output:[{{
+                      "filename": "paper1.pdf", 
+                      "title": "ML Study", 
+                      "topics": ["machine learning", "neural networks"]
+                    }}]
                 """
             ),
             (
                 "human",
-                """Berdasarkan topik user: {user_topics}, rekomendasikan paper dari: {all_papers}. Jangan sertakan paper dengan ID: {user_paper_ids}. Kembalikan JSON."""
+                """Berdasarkan topik user: {user_topics}, rekomendasikan paper dari: {all_papers}. Jangan sertakan paper 
+                dengan ID: {user_paper_ids}. Kembalikan JSON."""
             ),
         ])
 
