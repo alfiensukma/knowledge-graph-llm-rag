@@ -1,7 +1,7 @@
 # Knowledge Graph Construction with LLMs
 ## Overview
 
-This repository contains a project developed as part of the [Constructing Knowledge Graphs with LLMs](https://graphacademy.neo4j.com/courses/llm-knowledge-graphs-construction) course and the [Generative AI Workshop](https://graphacademy.neo4j.com/courses/genai-workshop) from Neo4j GraphAcademy. The project demonstrates how to build a knowledge graph from PDF documents using Large Language Models (LLMs) and store it in a Neo4j graph database. It also includes topic extraction and validation using the [Computer Science Ontology (CSO)](https://cso.kmi.open.ac.uk/topics/computer_science) and a chatbot interface built with Streamlit for querying and recommending papers.
+This repository contains a project developed as part of the Constructing Knowledge Graphs with LLMs course and the Generative AI Workshop from Neo4j GraphAcademy. The project demonstrates how to build a knowledge graph from PDF documents using Large Language Models (LLMs) and store it in a Neo4j graph database. It also includes topic extraction and validation using the Computer Science Ontology (CSO) and a chatbot interface built with Streamlit for querying and recommending papers.
 
 ## Prerequisites
 - **Python**: 3.8 or higher
@@ -11,10 +11,10 @@ This repository contains a project developed as part of the [Constructing Knowle
 
 **Run Chatbot**:
    - Start the Streamlit application:
-     ```bash
+     `bash
      cd chatbot
      streamlit run main.py
-     ```
+     `
    - Open `http://localhost:8501` in your browser.
 
 ## Acknowledgments
