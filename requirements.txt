@@ -20,3 +20,5 @@ langchain-google-genai
 rapidfuzz
 numpy
 PyMuPDF
+scikit-learn
+tqdm

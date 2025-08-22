@@ -29,6 +29,14 @@ class CSOService:
             Daftar topik: ```{topics}```\n\nJSON Output: """
         )
         self.chain = self.prompt | self.llm | self.parser
+        
+    def clear_existing_data(self):
+        print("Clearing existing Topic nodes and relationships...")
+        self.graph.query("""
+            MATCH (t:Topic)
+            DETACH DELETE t
+        """)
+        print("Database cleared.")
 
     def normalize_topic(self, topic: str) -> str:
         """Normalize topic by converting to lowercase and removing 's' or 'es' plural forms."""

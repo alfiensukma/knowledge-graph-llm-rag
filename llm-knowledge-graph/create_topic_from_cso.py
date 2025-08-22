@@ -9,7 +9,11 @@ def main():
     CSO_FILE_PATH = os.path.join("data", "cso.ttl")
     
     # Inisialisasi LLM
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv('GEMINI_API_KEY'))
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash", 
+        google_api_key=os.getenv('GEMINI_API_KEY'),
+        temperature=0
+    )
     
     # Inisialisasi CSOService
     cso_service = CSOService(
@@ -19,8 +23,12 @@ def main():
         llm=llm
     )
     
-    # Ekstrak dan impor topik CSO
-    topics, hierarchy_data = cso_service.extract_topics_with_hierarchy(CSO_FILE_PATH, max_depth=4)
+    # Clear existing data if needed
+    if input("Clear existing Topic nodes? (y/n): ").lower() == 'y':
+        cso_service.clear_existing_data()
+    
+    # Extract and import CSO topics
+    topics, hierarchy_data = cso_service.extract_topics_with_hierarchy(CSO_FILE_PATH)
     cso_service.import_to_neo4j(topics, hierarchy_data)
     
     print("\nCSO graph complete!")

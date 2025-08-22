@@ -6,6 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from services.graph_service import GraphService
 from services.llm_graph_service import LLMGraphExtractionService
 from services.topic_service import TopicExtractionService
+from services.llm_topic_modeling_service import LLMTopicModelingService
 
 def clean_text(text: str) -> str:
     """Clean text by removing irrelevant metadata, ISSN, and excessive whitespace."""
@@ -18,21 +19,44 @@ def clean_text(text: str) -> str:
 
 def main():
     load_dotenv()
-    
+
+    USE_TOPIC_SERVICE = False
+    USE_LLM_TOPIC_MODELING = True
+
+    if USE_TOPIC_SERVICE and USE_LLM_TOPIC_MODELING:
+        raise ValueError("Hanya boleh salah satu True: USE_TOPIC_SERVICE atau USE_LLM_TOPIC_MODELING.")
+    if not USE_TOPIC_SERVICE and not USE_LLM_TOPIC_MODELING:
+        raise ValueError("Set salah satu ke True: USE_TOPIC_SERVICE atau USE_LLM_TOPIC_MODELING.")
+
     # Konfigurasi
     NEO4J_URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
     NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    
+
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0)
-    
-    # Inisialisasi Services
+
     graph_service = GraphService(url=NEO4J_URI, username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
     llm_graph_extractor = LLMGraphExtractionService(llm=llm, graph_service=graph_service)
-    topic_service = TopicExtractionService(llm=llm, graph_service=graph_service)
-    
-    # Load semua dokumen dari folder menggunakan PyPDFLoader
+
+    if USE_TOPIC_SERVICE:
+        print(">> Mode: TopicExtractionService")
+        topic_handler = TopicExtractionService(llm=llm, graph_service=graph_service)
+    else:
+        print(">> Mode: LLMTopicModelingService (LSA/LDA)")
+        topic_handler = LLMTopicModelingService(
+            llm=llm,
+            graph_service=graph_service,
+            n_topics=5,
+            n_top_terms_per_doc=10,
+            min_confidence=0.9,
+            top_k_map_each=10,
+            max_topics_in_prompt=100,
+            use_full_document=True,
+            max_context_chars=80000,
+        )
+
+    # Load document
     DOCS_PATH = os.path.join("data", "pdfs")
     try:
         loader = DirectoryLoader(DOCS_PATH, glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True)
@@ -41,8 +65,8 @@ def main():
     except Exception as e:
         print(f"Failed to load documents: {e}")
         return
-    
-    # Kelompokkan dokumen berdasarkan file PDF
+
+    # merge PDF
     pdf_docs = {}
     for doc in docs:
         filename = os.path.basename(doc.metadata["source"])
@@ -51,36 +75,22 @@ def main():
             pdf_docs[filename] = {"path": pdf_path, "pages": []}
         if doc.page_content and isinstance(doc.page_content, str):
             pdf_docs[filename]["pages"].append(clean_text(doc.page_content))
-    
-    # Proses satu dokumen utuh pada satu waktu
+
     for filename, data in pdf_docs.items():
         print(f"\n--- Processing Document: {filename} ---")
         full_text = "\n".join(data["pages"])
         if not full_text.strip():
             print(f"  > No valid text after cleaning for {filename}")
             continue
-        
-        # Ekstrak struktur graph
+
         result = llm_graph_extractor.process_document(data["path"], filename, full_text)
-        
+
         if result:
             print(f"  > Extracted paper data: {result['graph_data']}")
-            paper_id = result["paper_id"]
-            
-            # Ekstrak dan validasi topik
-            try:
-                validated_topics = topic_service.get_validated_topics_for_text(full_text)
-                print(f"  > Validated topics: {validated_topics}")
-                if validated_topics:
-                    graph_service.link_paper_to_topics(paper_id, validated_topics)
-                    print(f"  > Linked paper to {len(validated_topics)} topics: {validated_topics}")
-                else:
-                    print("  > No validated CSO topics found for this paper.")
-            except Exception as e:
-                print(f"  > Failed to process topics for {filename}: {e}")
+
         else:
             print(f"  > Could not process document {filename}, skipping.")
-    
+
     print("\nAll documents processed successfully!")
 
 if __name__ == "__main__":

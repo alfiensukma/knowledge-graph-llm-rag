@@ -21,7 +21,7 @@ class TopicExtractionService:
         self.parser = JsonOutputParser(pydantic_object=List[str])
         self.validate_parser = JsonOutputParser(pydantic_object=dict)
         self.extract_prompt = ChatPromptTemplate.from_template(
-            """Berdasarkan teks paper akademik berikut, identifikasi hingga **5 topik ilmiah utama** yang dibahas.
+            """Berdasarkan teks paper akademik berikut, identifikasi hingga **10 topik ilmiah utama** yang dibahas.
             Fokus pada konsep ilmiah spesifik dalam ilmu komputer, contohnya 'Content-Based Filtering', 'Information 
             Retrieval', 'Text Mining', atau 'Machine Learning'. Hindari topik umum seperti 'ilmu komputer' dan/atau 
             'computer science'. Kembalikan topik dalam bentuk daftar JSON berisi string. Teks: ```{text}```\n\nJSON Output: """
