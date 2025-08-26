@@ -26,7 +26,7 @@ Build a **Computer Science** knowledge graph from PDFs using **LLMs**, store it 
 ## Prerequisites
 - **Python** 3.10+  
 - **Neo4j** (local or cloud) running and reachable
-- **Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/)) - i'm using free version, 1.000.000.000 tokens/minutes
+- **Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/)) - i'm using free version, 1.000.000 tokens/minutes
 - **PDF files** placed under `llm-knowledge-graph/data/pdfs`
 
 Optional (only if you run native Cypher/GDS Apriori variants):
