@@ -30,3 +30,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Data
+data/cso_topics.faiss
+data/cso_labels.json
