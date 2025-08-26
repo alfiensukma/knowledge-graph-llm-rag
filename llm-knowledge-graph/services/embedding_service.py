@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-DOCS_PATH = "llm-knowledge-graph/data/pdfs"
+DOCS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "pdfs")
 NEO4J_URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
 NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
