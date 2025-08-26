@@ -1,20 +1,21 @@
-import os, re, time
-from typing import Dict, Any
+import os
+import re
+from typing import Dict, Any, List
 from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
-from services.graph_service import GraphService
 from services.lsa_service import LSAService
 from services.lda_service import LDAService
-from services.topic_mapper_service import TopicMapperService
-from langchain_google_genai import ChatGoogleGenerativeAI
+
+DOCS_PATH = os.path.join("data", "pdfs")
 
 def _clean_page(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip()
 
-def load_pdfs(folder: str):
+
+def load_pdfs(folder: str) -> Dict[str, str]:
     loader = DirectoryLoader(folder, glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True)
     docs = loader.load()
-    pdf_docs = {}
+    pdf_docs: Dict[str, List[str]] = {}
     for d in docs:
         fn = os.path.basename(d.metadata["source"])
         pdf_docs.setdefault(fn, [])
@@ -22,146 +23,144 @@ def load_pdfs(folder: str):
             pdf_docs[fn].append(_clean_page(d.page_content))
     return {fn: "\n".join(pages) for fn, pages in pdf_docs.items()}
 
-def print_model_results(model_name: str, results: Dict[str, Any]):
-    print(f"\n=== {model_name} Results ===")
-    
-    print("\nGenerated Topics:")
-    for topic in results.get("topics", []):
-        print(f"\nTopic {topic['topic_id']}:")
-        for word, weight in zip(topic["top_words"], topic["weights"]):
-            print(f"  - {word}: {weight:.4f}")
-    
-    print("\nDocument Terms:")
-    for doc in results.get("doc_terms", []):
-        print(f"\nDocument: {doc['filename']}")
-        print("Terms and weights:")
-        for term, weight in doc["terms"]:
-            print(f"  - {term}: {weight:.4f}")
 
-class TokenManager:
-    def __init__(self, tokens_per_minute: int = 1_000_000):
-        self.tokens_per_minute = tokens_per_minute
-        self.safety_margin = 0.8  # Use 80% of limit
-        self.effective_limit = int(tokens_per_minute * self.safety_margin)
-        self.current_minute_tokens = 0
-        self.minute_start_time = time.time()
-        
-    def can_proceed(self, estimated_tokens: int) -> bool:
-        current_time = time.time()
-        
-        # Reset if new minute
-        if current_time - self.minute_start_time >= 60:
-            self.current_minute_tokens = 0
-            self.minute_start_time = current_time
-            
-        return self.current_minute_tokens + estimated_tokens <= self.effective_limit
+def choose_files(pdfs: Dict[str, str]) -> Dict[str, str]:
+    if not pdfs:
+        print(" > No PDFs found in:", DOCS_PATH)
+        return {}
     
-    def add_tokens(self, tokens: int):
-        self.current_minute_tokens += tokens
-        
-    def wait_if_needed(self, estimated_tokens: int):
-        if not self.can_proceed(estimated_tokens):
-            wait_time = 60 - (time.time() - self.minute_start_time)
-            if wait_time > 0:
-                print(f"Rate limit approaching. Waiting {wait_time:.1f} seconds...")
-                time.sleep(wait_time)
-                self.current_minute_tokens = 0
-                self.minute_start_time = time.time()
+    pdf_info = []
+    for name in sorted(pdfs.keys()):
+        file_path = os.path.join(DOCS_PATH, name)
+        try:
+            size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        except OSError:
+            size_mb = len(pdfs[name]) / (1024 * 1024 * 0.5)
+        pdf_info.append({"name": name, "size_mb": size_mb})
+    
+    print("\n" + "=" * 90)
+    print("PDF FILES (choose files to run topic modeling)")
+    print("=" * 90)
+    for i, info in enumerate(pdf_info, 1):
+        print(f"{i:2d}. {info['name']:<75} {info['size_mb']:6.2f}MB")
+    print("=" * 90)
+    print(f"Total: {len(pdf_info)}")
+    
+    raw = input("Enter PDF number (or 'q' to quit): ").strip()
+    
+    idxs = set()
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if token.isdigit():
+            j = int(token)
+            if 1 <= j <= len(pdf_info):
+                idxs.add(j-1)
+    
+    if not idxs:
+        print(" > Nothing selected; exiting.")
+        return {}
+    
+    selected = {pdf_info[j]["name"]: pdfs[pdf_info[j]["name"]] for j in sorted(idxs)}
+    selected_names = [pdf_info[j]["name"] for j in sorted(idxs)]
+    print(f"\nSelected: {', '.join(selected_names)}")
+    return selected
+
+
+def print_model_results(model_name: str, results: Dict[str, Any], top_terms_preview: int = 10):
+    print(f"\n=== {model_name} Results ===")
+    print(f"Docs: {results.get('n_docs', 0)} | Topics: {results.get('n_topics', 0)}")
+
+    # Topics
+    topics = results.get("topics", [])
+    if topics:
+        print("\nGenerated Topics:")
+        for topic in topics:
+            words = topic.get("top_words", [])
+            weights = topic.get("weights", [])
+            print(f"\nTopic {topic['topic_id']}:")
+            for w, ww in zip(words[:top_terms_preview], weights[:top_terms_preview]):
+                print(f"  - {w}: {ww:.4f}")
+    else:
+        print("\n(no topics)")
+
+    # Terms per document
+    docs_terms = results.get("doc_terms", [])
+    if docs_terms:
+        print("\nDocument Terms:")
+        for doc in docs_terms:
+            print(f"\nDocument: {doc['filename']}")
+            print("Terms and weights:")
+            for term, weight in doc["terms"][:top_terms_preview]:
+                print(f"  - {term}: {weight:.4f}")
+    else:
+        print("\n(no doc terms)")
+
 
 def main():
     load_dotenv()
-    NEO4J_URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-    NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
-    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+    N_TOPICS = 8
+    N_TOP_TERMS = 12
+    MAX_FEATURES = 20000
+    MIN_DF = 2
+    MAX_DF = 0.9
+    NGRAM_RANGE = (1, 2)
+    RANDOM_STATE = 42
     RUN_LSA = True
-    RUN_LDA = False
+    RUN_LDA = True
 
-    if RUN_LSA and RUN_LDA:
-        raise ValueError("Hanya boleh salah satu yang True: LSA atau LDA.")
-    if not RUN_LSA and not RUN_LDA:
-        raise ValueError("Pilih salah satu: set RUN_LSA=True atau RUN_LDA=True")
-
-    # Initialize services
-    gs = GraphService(url=NEO4J_URI, username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0)
-    
-    # Check if papers exist in database
-    papers_count = gs.graph.query("MATCH (p:Paper) RETURN count(p) AS count")[0]["count"]
-    if papers_count == 0:
-        print("No papers found in database. Please run create_paper_nodes.py first.")
+    all_pdfs = load_pdfs(DOCS_PATH)
+    selected = choose_files(all_pdfs)
+    if not selected:
         return
     
-    print(f"Found {papers_count} papers in database. Proceeding with topic modeling...")
+    total_chars = sum(len(text) for text in selected.values())
+    print(f" > Loaded {len(selected)} selected PDFs for topic modeling.")
+    print(f" > Total content: {total_chars:,} characters")
 
-    # Load PDFs for topic modeling
-    pdfs = load_pdfs(os.path.join("data", "pdfs"))
-    print(f"Loaded {len(pdfs)} PDFs for topic modeling")
+    print("\n=== Running Topic Modeling (LSA & LDA) ===")
 
-    terms_by_doc = {}
+    # Adjust min_df based on number of documents to avoid sklearn errors
+    n_docs = len(selected)
+    adjusted_min_df = min(MIN_DF, max(1, n_docs // 2)) if n_docs > 1 else 1
+    adjusted_max_df = MAX_DF if n_docs > 2 else 1.0
+    
+    print(f" > Documents: {n_docs}, using min_df={adjusted_min_df}, max_df={adjusted_max_df}")
 
+    # LSA
     if RUN_LSA:
         print("\n=== Running LSA ===")
         lsa = LSAService(
-            n_topics=5,
-            n_top_terms_per_doc=10,
-            max_features=20000,
+            n_topics=N_TOPICS,
+            n_top_terms_per_doc=N_TOP_TERMS,
+            max_features=MAX_FEATURES,
             stopwords_lang="english",
-            random_state=42,
-            ngram_range=(1, 2),
+            random_state=RANDOM_STATE,
+            ngram_range=NGRAM_RANGE,
+            min_df=adjusted_min_df,
+            max_df=adjusted_max_df,
         )
-        lsa_res = lsa.run(pdfs)
-        terms_by_doc = {d["filename"]: d["terms"] for d in lsa_res.get("doc_terms", [])}
-        print_model_results("LSA", lsa_res)
+        lsa_res = lsa.run(selected)
+        print_model_results("LSA", lsa_res, top_terms_preview=min(10, N_TOP_TERMS))
 
+    # LDA
     if RUN_LDA:
         print("\n=== Running LDA ===")
         lda = LDAService(
-            n_topics=5,
-            n_top_terms_per_doc=10,
-            max_features=20000,
+            n_topics=N_TOPICS,
+            n_top_terms_per_doc=N_TOP_TERMS,
+            max_features=MAX_FEATURES,
             stopwords_lang="english",
-            random_state=42,
+            random_state=RANDOM_STATE,
+            ngram_range=NGRAM_RANGE,
+            min_df=adjusted_min_df,
+            max_df=adjusted_max_df,
         )
-        lda_res = lda.run(pdfs)
-        terms_by_doc = {d["filename"]: d["terms"] for d in lda_res.get("doc_terms", [])}
-        print_model_results("LDA", lda_res)
-        
-        
-# --------------------------------------------------- #
-    # Mapping to topic (OPTIONAL)
-    print(f"\n=== Starting Topic Mapping ===")
-    
-    # Initialize token manager
-    token_manager = TokenManager(tokens_per_minute=1_000_000)
-    
-    mapper = TopicMapperService(graph_service=gs, llm=llm)
-    mapper.token_manager = token_manager
-    
-    linked = mapper.map_and_link(
-        lsa_terms_by_doc=terms_by_doc if RUN_LSA else {},
-        lda_terms_by_doc=terms_by_doc if RUN_LDA else {},
-        top_k_each=10,
-    )
+        lda_res = lda.run(selected)
+        print_model_results("LDA", lda_res, top_terms_preview=min(10, N_TOP_TERMS))
 
-    # Results
-    print("\n=== Matched Topics with CSO ===")
-    total_matches = 0
-    for fn, topics in linked.items():
-        print(f"\nDocument: {fn}")
-        if topics:
-            print("Matched Topics:")
-            for topic in topics:
-                print(f"  - {topic}")
-            total_matches += len(topics)
-        else:
-            print("  No topics matched")
-    
-    print(f"\n=== Summary ===")
-    print(f"Total documents processed: {len(linked)}")
-    print(f"Total topic matches created: {total_matches}")
-    print(f"Average topics per document: {total_matches/len(linked) if linked else 0:.1f}")
 
 if __name__ == "__main__":
     main()

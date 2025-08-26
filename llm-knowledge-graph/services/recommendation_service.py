@@ -62,7 +62,7 @@ class RecommendationService:
             # Ambil topik dari paper yang dibaca user
             user_topics_query = """
             MATCH (p:Paper)-[:HAS_TOPIC]->(t:Topic)
-            WHERE p.id IN $paper_ids
+            WHERE elementId(p) IN $paper_ids
             RETURN collect(DISTINCT t.label) AS userTopics
             """
             user_topics_result = self.graph_service.graph.query(user_topics_query, {"paper_ids": user_paper_ids})
@@ -76,8 +76,8 @@ class RecommendationService:
             # Ambil semua paper dan topiknya (kecuali paper yang dibaca user)
             all_papers_query = """
             MATCH (p:Paper)-[:HAS_TOPIC]->(t:Topic)
-            WHERE NOT p.id IN $paper_ids
-            RETURN p.id AS id, p.filename AS filename, p.title AS title, collect(t.label) AS topics
+            WHERE NOT elementId(p) IN $paper_ids
+            RETURN elementId(p) AS id, p.filename AS filename, p.title AS title, collect(t.label) AS topics
             """
             all_papers_result = self.graph_service.graph.query(all_papers_query, {"paper_ids": user_paper_ids})
             all_papers = [

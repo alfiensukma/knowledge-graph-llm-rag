@@ -5,9 +5,8 @@ from langchain_community.graphs import Neo4jGraph
 import re
 
 def normalize_text(text: str) -> str:
-    """Normalize text for comparison: lowercase, remove extra spaces, and remove parentheses content."""
-    text = re.sub(r'\s*\([^)]+\)\s*', ' ', text)  # Remove content in parentheses (e.g., (AHP))
-    text = re.sub(r'\s+', ' ', text.strip())  # Remove extra spaces
+    text = re.sub(r'\s*\([^)]+\)\s*', ' ', text)
+    text = re.sub(r'\s+', ' ', text.strip())
     return text.lower()
 
 class TopicExtractionService:
@@ -48,15 +47,15 @@ class TopicExtractionService:
     def _fetch_topics_and_hierarchy_from_neo4j(self) -> tuple:
         """Fetches all topic labels and hierarchy from Neo4j."""
         try:
-            # Ambil topik, kecuali 'computer science'
+            # take all topics, except "computer science"
             topic_results = self.graph_service.graph.query(
                 "MATCH (t:Topic) WHERE t.label <> 'computer science' RETURN t.label AS label"
             )
-            topics = [record['label'] for record in topic_results]  # Simpan asli untuk kecocokan
+            topics = [record['label'] for record in topic_results]
             if not topics:
                 print("  > Warning: No topics found in Neo4j database!")
-            
-            # Ambil hierarki
+
+            # hierarchy
             hierarchy_results = self.graph_service.graph.query(
                 """
                 MATCH (sub:Topic)-[:SUB_TOPIC_OF]->(super:Topic)
@@ -87,7 +86,7 @@ class TopicExtractionService:
             return []
 
         validated_topics = set()
-        # Normalisasi cso_topics untuk pemeriksaan
+        # normalize
         normalized_cso_topics = {t: normalize_text(t) for t in self.cso_topics}
 
         for candidate in candidate_topics:
@@ -101,7 +100,7 @@ class TopicExtractionService:
                         print(f"  > Validated topic: {candidate} -> {original_topic}")
                         break
                 else:
-                    # Jika tidak ada kecocokan langsung, validasi dengan LLM
+                    # if no direct match, validate with LLM
                     validation_result = self.validate_chain.invoke({
                         "candidate": candidate,
                         "cso_topics": ", ".join(self.cso_topics),
