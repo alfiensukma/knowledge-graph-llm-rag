@@ -1,4 +1,4 @@
-<img width="982" height="466" alt="image" src="https://github.com/user-attachments/assets/bb1364e5-e397-4f03-81ad-b885282f6419" /># Knowledge Graph Construction with LLMs
+# Knowledge Graph Construction with LLMs
 
 Build a **Computer Science** knowledge graph from PDFs using **LLMs**, store it in **Neo4j**, validate topics against the **Computer Science Ontology (CSO)**, and explore via a **Streamlit chatbot**. The project also includes **LLM Apriori-like mining** for associations and optional **LDA/LSA topic modeling** pipelines whose outputs are mapped back to CSO topics.
 
