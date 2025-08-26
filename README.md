@@ -1,4 +1,4 @@
-# Knowledge Graph Construction with LLMs
+<img width="982" height="466" alt="image" src="https://github.com/user-attachments/assets/bb1364e5-e397-4f03-81ad-b885282f6419" /># Knowledge Graph Construction with LLMs
 
 Build a **Computer Science** knowledge graph from PDFs using **LLMs**, store it in **Neo4j**, validate topics against the **Computer Science Ontology (CSO)**, and explore via a **Streamlit chatbot**. The project also includes **LLM Apriori-like mining** for associations and optional **LDA/LSA topic modeling** pipelines whose outputs are mapped back to CSO topics.
 
@@ -26,7 +26,7 @@ Build a **Computer Science** knowledge graph from PDFs using **LLMs**, store it 
 ## Prerequisites
 - **Python** 3.10+  
 - **Neo4j** (local or cloud) running and reachable
-- **Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/))
+- **Google Gemini API Key** (from [Google AI Studio](https://aistudio.google.com/)) - i'm using free version, 1.000.000.000 tokens/minutes
 - **PDF files** placed under `llm-knowledge-graph/data/pdfs`
 
 Optional (only if you run native Cypher/GDS Apriori variants):
@@ -37,13 +37,10 @@ Optional (only if you run native Cypher/GDS Apriori variants):
 ## Setup & Installation
 
 ```bash
-# 1) Go to project root
-cd llm-knowledge-graph
-
-# 2) Create virtual environment
+# 1) Create virtual environment
 python -m venv venv
 
-# 3) Activate venv
+# 2) Activate venv
 # Windows (Command Prompt):
 .venv\Scripts\activate
 
@@ -53,8 +50,11 @@ python -m venv venv
 # macOS/Linux:
 source .venv/bin/activate
 
-# 4) Install dependencies
+# 3) Install dependencies
 pip install -r requirements.txt
+
+# 4) Go to project root
+cd llm-knowledge-graph
 ```
 
 ---
@@ -112,6 +112,7 @@ This parses the **Computer Science Ontology** (RDF) and loads `(:Topic)` nodes (
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/a3c10e22-1668-4954-a073-36627bad0282" />
 
 #### Run this command
 
@@ -120,6 +121,7 @@ python create_topic_from_cso.py
 ```
 
 #### Expected Result
+<img width="993" height="415" alt="result cso_topic" src="https://github.com/user-attachments/assets/3603102d-686d-41a9-b4d5-7d51ebd976aa" />
 
 > This process will feel long when retrieving data from an RDF file for the first time.
 
@@ -132,7 +134,7 @@ Creates `(:Paper)` from PDFs.
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
-
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/94912743-ad78-4b0d-af78-e3adc70a2b47" />
 
 #### Make sure there is a PDF file
 
@@ -147,7 +149,10 @@ python create_paper.py
 ```
 
 #### Expected Result
+<img width="1021" height="780" alt="image" src="https://github.com/user-attachments/assets/a824a17c-fafb-4c07-b17c-9c18a26759e8" />
 
+Graph:
+<img width="982" height="466" alt="result_create_paper_graph" src="https://github.com/user-attachments/assets/08dfa20e-6d95-41d1-8a7f-d24ca34a424e" />
 
 ---
 
@@ -158,11 +163,11 @@ Links topics via LLM (validated against CSO) → `(:Paper)-[:HAS_TOPIC]->(:Topic
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
-
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/c4c18767-fac9-484f-91f5-44ff5d561d35" />
 
 #### Make sure there is a Paper node and Topic node
 
-- Please note: You can only process one selected Paper at a time. This project uses a limited tokens (version Gemini).
+- Please note: You can ONLY process ONE selected Paper at a time. This project uses a limited tokens (version Gemini).
 - You can select an UNPROCESSED Paper from list to generate topic mapping.
 - The list of papers that appears only shows PDFs that have been generated as nodes. Therefore, repeat step 2 to generate a new paper.
 
@@ -173,7 +178,10 @@ python create_mapping_topic.py
 ```
 
 #### Expected Result
+<img width="1037" height="641" alt="result_topic_mapping" src="https://github.com/user-attachments/assets/c99e28d9-d5ec-459f-9b18-02f1a0aea85a" />
 
+Graph:
+<img width="1065" height="524" alt="result topic_mapping" src="https://github.com/user-attachments/assets/65cdd54f-7315-4a9c-9dcb-8bdb85659525" />
 
 ---
 
@@ -184,7 +192,7 @@ Runs topic modeling **LDA** or **LSA** on your PDFs and prints results using LLM
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
-
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/09029bcf-d1a1-4dbf-8eac-6b9b012a812a" />
 
 #### Run this command
 
@@ -193,7 +201,7 @@ python run_llm_topic_modeling.py
 ```
 
 #### Expected Result
-
+<img width="951" height="893" alt="result_llm_modeling" src="https://github.com/user-attachments/assets/fcc67604-ffc0-4f0c-ac00-38ea368ab78d" />
 
 ---
 
@@ -204,7 +212,7 @@ Runs classical topic modeling **LDA** or **LSA** (scikit-learn) on your PDFs and
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
-
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/a9a5d524-1ef8-4fd7-82a4-225ecbfe25aa" />
 
 #### Run this command
 
@@ -213,7 +221,8 @@ python run_topic_modeling.py
 ```
 
 #### Expected Result
-
+<img width="396" height="794" alt="result_lsa" src="https://github.com/user-attachments/assets/3b169d12-3559-41d4-b6b2-fd33eca7d37d" />
+<img width="440" height="581" alt="result_lda" src="https://github.com/user-attachments/assets/673f02e4-3590-4aae-9c72-6e4a54df7e31" />
 
 ---
 
@@ -224,10 +233,12 @@ Generate topic combinations per paper → creates `(:TopicCombination)` and `(:P
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/7089d4fc-4162-4e55-a052-bc7e399d2045" />
 
 #### Make sure there is a Paper node and Topic node
 
-Make sure all required PDF files have been generated into nodes
+- Please note: You can ONLY process ONE selected Paper at a time. This project uses a limited tokens (version Gemini).
+- Make sure all required PDF files have been generated into nodes
 
 #### Run this command
 
@@ -236,7 +247,10 @@ python create_combination.py
 ```
 
 #### Expected Result
+<img width="987" height="864" alt="result_combination" src="https://github.com/user-attachments/assets/ce629449-7946-4c77-9b5d-10584098c457" />
 
+Graph:
+<img width="519" height="465" alt="result_combination_graph" src="https://github.com/user-attachments/assets/47febfaa-ecff-4df1-bd88-4df77e34bfbd" />
 
 ---
 
@@ -247,6 +261,7 @@ Run Apriori-like mining via LLM → creates `(:FrequentTopicSet)`, `(:LeftTopicS
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/2ae77607-3553-4fff-ae40-d4828fac2fb4" />
 
 #### Make sure there is a Paper node and Topic node
 
@@ -261,7 +276,10 @@ python run_llm_apriori.py
 > The Apriori logic (frequent itemsets, rules) is **driven by LLM**; Cypher is used only to persist the results into Neo4j.
 
 #### Expected Result
+<img width="940" height="721" alt="result_llm_apriori" src="https://github.com/user-attachments/assets/eeacbf05-a088-4652-8788-8ec1584695df" />
 
+Graph:
+<img width="948" height="445" alt="result_llm_apriori_graph" src="https://github.com/user-attachments/assets/b02069bb-9f92-46f5-9069-46f9854eb773" />
 
 ---
 
@@ -272,11 +290,12 @@ Recommends papers based on the learned co-occurrence patterns:
 #### Prerequisites
 
 Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/682a5dde-3166-4304-90fa-9e58c7a745c6" />
 
 #### Make sure there is a Paper node and Topic node
 
 - The list of papers that appears only shows PDFs that have been generated as nodes. Therefore, repeat step 2 to generate a new paper.
-- anda dapat memilih lebih dari 1 paper untuk dijadikan sebagai sample. contoh ` Select Paper: 1, 2, 3 `
+- You can select more than 1 paper to be used as a sample. For example, `Select Paper: 1, 2, 3`
 
 #### Run this command
 
@@ -285,11 +304,23 @@ python run_recommendation.py
 ```
 
 #### Expected Result
-
+<img width="1091" height="741" alt="result_recommendation" src="https://github.com/user-attachments/assets/2fdceb43-9275-4363-a45b-c96d5a7555fb" />
 
 ---
 
 ### 9) Chatbot (Streamlit)
+
+Run embedding first
+
+```bash
+python services\embedding_service.py
+```
+<img width="1051" height="155" alt="image" src="https://github.com/user-attachments/assets/3c7f07a5-5917-46f1-a336-f6248c0a6e2f" />
+
+Graph + vector:
+<img width="1003" height="442" alt="image" src="https://github.com/user-attachments/assets/d3e11fd8-c0db-4495-9431-28975aac4c2a" />
+
+> To avoid the warning that the token usage limit has been reached, please ONLY use ONE pdf file during the embedding process.
 
 Browse & query your graph via a simple UI:
 
@@ -299,6 +330,9 @@ streamlit run main.py
 ```
 
 Open your browser at `http://localhost:8501`.
+
+#### Expected Result
+![chatbot](https://github.com/user-attachments/assets/9c2d2935-ac4f-4110-aaa1-e9e89aebe8e5)
 
 ---
 
