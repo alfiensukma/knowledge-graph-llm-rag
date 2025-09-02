@@ -122,7 +122,7 @@ python create_topic_from_cso.py
 ```
 
 #### Expected Result
-<img width="993" height="415" alt="result cso_topic" src="https://github.com/user-attachments/assets/3603102d-686d-41a9-b4d5-7d51ebd976aa" />
+<img width="784" height="374" alt="image" src="https://github.com/user-attachments/assets/cc82a0f8-d56c-457b-9264-80aa938e4ef8" />
 
 > This process will feel long when retrieving data from an RDF file for the first time.
 
@@ -202,7 +202,7 @@ python run_llm_topic_modeling.py
 ```
 
 #### Expected Result
-<img width="951" height="893" alt="result_llm_modeling" src="https://github.com/user-attachments/assets/fcc67604-ffc0-4f0c-ac00-38ea368ab78d" />
+<img width="832" height="879" alt="image" src="https://github.com/user-attachments/assets/93d4b277-18df-4b74-8783-97c367daaca1" />
 
 ---
 
@@ -222,8 +222,7 @@ python run_topic_modeling.py
 ```
 
 #### Expected Result
-<img width="396" height="794" alt="result_lsa" src="https://github.com/user-attachments/assets/3b169d12-3559-41d4-b6b2-fd33eca7d37d" />
-<img width="440" height="581" alt="result_lda" src="https://github.com/user-attachments/assets/673f02e4-3590-4aae-9c72-6e4a54df7e31" />
+<img width="1058" height="875" alt="image" src="https://github.com/user-attachments/assets/386c83b1-636a-4216-821a-834f82dba5af" />
 
 ---
 
