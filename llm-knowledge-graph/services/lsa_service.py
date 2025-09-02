@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Dict, Any, List, Tuple
 import re
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import normalize
 
@@ -17,34 +17,30 @@ def _clean_text(text: str) -> str:
 
 
 class LSAService:
-    """
-    LSA = TF-IDF -> SVD. 
-    - Top words tiap topik berdasarkan |loading| (absolut) agar istilah dengan loading negatif tetap tertangkap.
-    - Top terms tiap dokumen dihitung dari aproksimasi X_hat = UΣV^T (di sini: doc_topic @ topic_term), lalu dinormalisasi.
-    """
 
     def __init__(
         self,
-        n_topics: int = 10,
-        n_top_terms_per_doc: int = 12,
-        max_features: int = 20000,
+        n_topics: int,
+        n_top_terms_per_doc: int,
+        max_features: int,
         stopwords_lang: str = "english",
-        random_state: int = 42,
+        custom_stopwords: List[str] | None = None,
+        random_state: int = 0,
         ngram_range=(1, 2),
-        min_df: int | float = 2,     # remove words that are too rare
-        max_df: float = 0.9,         # remove words that are too common
+        min_df: int | float = 0,
+        max_df: float = 0,
     ):
         self.n_topics = n_topics
         self.n_top_terms_per_doc = n_top_terms_per_doc
         self.max_features = max_features
         self.stopwords_lang = stopwords_lang
+        self.custom_stopwords = custom_stopwords
         self.random_state = random_state
         self.ngram_range = ngram_range
         self.min_df = min_df
         self.max_df = max_df
 
     def run(self, pdf_texts: Dict[str, str]) -> Dict[str, Any]:
-        # 1) Prepare documents
         filenames, docs = [], []
         for fn, txt in pdf_texts.items():
             c = _clean_text(txt)
@@ -53,10 +49,12 @@ class LSAService:
                 docs.append(c)
         if not docs:
             return {"doc_terms": [], "topics": [], "n_docs": 0, "n_topics": 0}
+        
+        stop_words = list(ENGLISH_STOP_WORDS.union(self.custom_stopwords or []))
 
-        # 2) TF-IDF
+        # TF-IDF
         vec = TfidfVectorizer(
-            stop_words=self.stopwords_lang,
+            stop_words=stop_words,
             max_features=self.max_features,
             ngram_range=self.ngram_range,
             min_df=self.min_df,
@@ -67,7 +65,7 @@ class LSAService:
         if X.shape[1] == 0:
             return {"doc_terms": [], "topics": [], "n_docs": len(filenames), "n_topics": 0}
 
-        # 3) SVD
+        # SVD
         # Adjust number of topics if needed
         max_possible_topics = min(self.n_topics, max(1, min(X.shape[0], X.shape[1])))
         n_topics_eff = max(1, max_possible_topics)
@@ -75,12 +73,12 @@ class LSAService:
         doc_topic = svd.fit_transform(X)          # shape: (n_docs, k)
         topic_term = svd.components_              # shape: (k, n_terms)
 
-        # 4) Compute document-term scores
+        # Compute document-term scores
         doc_term_scores = doc_topic @ topic_term  # (n_docs, n_terms)
         doc_term_scores = np.abs(doc_term_scores) # absolute values
         doc_term_scores = normalize(doc_term_scores, norm="l2", axis=1)
 
-        # 5) Get top terms per document
+        # Get top terms per document
         doc_terms = []
         top_k_doc = min(self.n_top_terms_per_doc, len(terms))
         for i, fn in enumerate(filenames):
@@ -89,7 +87,7 @@ class LSAService:
             terms_i = [(terms[j], float(row[j])) for j in idx]
             doc_terms.append({"filename": fn, "model": "LSA", "terms": terms_i})
 
-        # 6) Get top words per topic based on |loading|
+        # Get top words per topic based on |loading|
         topics = []
         top_k_topic = min(self.n_top_terms_per_doc, len(terms))
         for k in range(n_topics_eff):

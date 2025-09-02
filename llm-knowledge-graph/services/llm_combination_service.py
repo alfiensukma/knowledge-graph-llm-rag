@@ -2,8 +2,7 @@ from typing import List, Dict, Any, Optional, Tuple, Set
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
-import re
-import json
+import re, itertools, json
 
 def _normalize_item(s: str) -> str:
     if not isinstance(s, str):
@@ -114,7 +113,7 @@ class LLMCombinationService:
         self,
         paper_id: str,
         max_k: Optional[int] = None,
-        repair_missing: bool = False  # kalau True, isi kekurangan (jika LLM miss) pakai kombinasi Python (opsional)
+        repair_missing: bool = False
     ) -> Optional[List[List[str]]]:
         topics = self._fetch_topics_for_paper(paper_id)
         if not topics:
@@ -146,7 +145,6 @@ class LLMCombinationService:
         combos = self._validate_and_canonicalize_combos(paper_id, topics, llm_combos, k)
 
         if repair_missing:
-            import itertools
             full = set()
             for r in range(1, k + 1):
                 for combo in itertools.combinations(topics, r):

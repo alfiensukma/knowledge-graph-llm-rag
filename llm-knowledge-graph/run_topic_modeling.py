@@ -12,32 +12,44 @@ def _clean_page(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip()
 
 
-def load_pdfs(folder: str) -> Dict[str, str]:
-    loader = DirectoryLoader(folder, glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True)
-    docs = loader.load()
-    pdf_docs: Dict[str, List[str]] = {}
-    for d in docs:
-        fn = os.path.basename(d.metadata["source"])
-        pdf_docs.setdefault(fn, [])
-        if d.page_content:
-            pdf_docs[fn].append(_clean_page(d.page_content))
-    return {fn: "\n".join(pages) for fn, pages in pdf_docs.items()}
+def load_pdf_names(folder: str) -> List[str]:
+    pdf_files = []
+    for root, _, files in os.walk(folder):
+        for file in files:
+            if file.lower().endswith(".pdf"):
+                pdf_files.append(file)
+    return sorted(pdf_files)
 
 
-def choose_files(pdfs: Dict[str, str]) -> Dict[str, str]:
-    if not pdfs:
+def load_selected_pdfs(folder: str, selected_names: List[str]) -> Dict[str, str]:
+    print(f"\nLoading content for {len(selected_names)} selected PDF(s)...")
+    selected_docs = {}
+    for name in selected_names:
+        file_path = os.path.join(folder, name)
+        try:
+            loader = PyPDFLoader(file_path)
+            pages = loader.load_and_split()
+            content = "\n".join([_clean_page(p.page_content) for p in pages if p.page_content])
+            selected_docs[name] = content
+        except Exception as e:
+            print(f"  - Warning: Could not load {name}. Error: {e}")
+    return selected_docs
+
+
+def choose_files(pdf_names: List[str]) -> List[str]:
+    if not pdf_names:
         print(" > No PDFs found in:", DOCS_PATH)
-        return {}
-    
+        return []
+
     pdf_info = []
-    for name in sorted(pdfs.keys()):
+    for name in pdf_names:
         file_path = os.path.join(DOCS_PATH, name)
         try:
             size_mb = os.path.getsize(file_path) / (1024 * 1024)
         except OSError:
-            size_mb = len(pdfs[name]) / (1024 * 1024 * 0.5)
+            size_mb = 0
         pdf_info.append({"name": name, "size_mb": size_mb})
-    
+
     print("\n" + "=" * 90)
     print("PDF FILES (choose files to run topic modeling)")
     print("=" * 90)
@@ -60,49 +72,62 @@ def choose_files(pdfs: Dict[str, str]) -> Dict[str, str]:
     
     if not idxs:
         print(" > Nothing selected; exiting.")
-        return {}
-    
-    selected = {pdf_info[j]["name"]: pdfs[pdf_info[j]["name"]] for j in sorted(idxs)}
+        return []
+
     selected_names = [pdf_info[j]["name"] for j in sorted(idxs)]
     print(f"\nSelected: {', '.join(selected_names)}")
-    return selected
+    return selected_names
 
 
 def print_model_results(model_name: str, results: Dict[str, Any], top_terms_preview: int = 10):
-    print(f"\n=== {model_name} Results ===")
-    print(f"Docs: {results.get('n_docs', 0)} | Topics: {results.get('n_topics', 0)}")
+    print("\n" + "="*25 + f" {model_name} Results " + "="*25)
 
-    # Topics
     topics = results.get("topics", [])
-    if topics:
-        print("\nGenerated Topics:")
-        for topic in topics:
-            words = topic.get("top_words", [])
-            weights = topic.get("weights", [])
-            print(f"\nTopic {topic['topic_id']}:")
-            for w, ww in zip(words[:top_terms_preview], weights[:top_terms_preview]):
-                print(f"  - {w}: {ww:.4f}")
-    else:
-        print("\n(no topics)")
-
-    # Terms per document
     docs_terms = results.get("doc_terms", [])
-    if docs_terms:
-        print("\nDocument Terms:")
-        for doc in docs_terms:
-            print(f"\nDocument: {doc['filename']}")
-            print("Terms and weights:")
-            for term, weight in doc["terms"][:top_terms_preview]:
-                print(f"  - {term}: {weight:.4f}")
+
+    if not topics and not docs_terms:
+        print("(No results generated)")
+        return
+    
+    topic_names = {}
+    for topic in topics:
+        top_words = topic.get("top_words", [])
+        name = " ".join(top_words[:3]).title()
+        topic_names[topic['topic_id']] = name
+
+    for doc in docs_terms:
+        print(f"\n--- Document: {doc['filename']} ---")
+
+        if model_name == "LDA" and "distribution" in doc:
+            print("\n  Document Topic Distribution:")
+            dist_str = []
+            for i, p in enumerate(doc["distribution"]):
+                topic_name = f"\"{topic_names.get(i, f'Topic {i}')}\""
+                dist_str.append(f"{p*100:.1f}% {topic_name}")
+            print(f"    └─ Composed of: {', '.join(dist_str)}")
+
+        print(f"\n  Document Top Terms (Top {top_terms_preview}):")
+        for term, weight in doc["terms"][:top_terms_preview]:
+            print(f"    {term:<30} {weight:.4f}")
+
+    print("\n" + "-"*20 + " Global Latent Topics " + "-"*20)
+    if topics:
+        for topic in topics:
+            topic_id = topic['topic_id']
+            suggested_name = topic_names.get(topic_id, "")
+            print(f"\n  Topic {topic_id}: \"{suggested_name}\"")
+            words = " ".join([f"{word}({w:.2f})" for word, w in zip(topic.get("top_words", []), topic.get("weights", []))][:top_terms_preview])
+            print(f"    └─ Keywords: {words}")
     else:
-        print("\n(no doc terms)")
+        print("\n(No global topics generated)")
+    print("\n" + "="*65)
 
 
 def main():
     load_dotenv()
 
-    N_TOPICS = 8
-    N_TOP_TERMS = 12
+    N_TOPICS = 5
+    N_TOP_TERMS = 10
     MAX_FEATURES = 20000
     MIN_DF = 2
     MAX_DF = 0.9
@@ -110,20 +135,27 @@ def main():
     RANDOM_STATE = 42
     RUN_LSA = True
     RUN_LDA = True
+    CUSTOM_STOP_WORDS = ['et', 'al', 'et al', 'fig', 'figure', 'table', 'doi', 'https', 'www', 'org']
 
-    all_pdfs = load_pdfs(DOCS_PATH)
-    selected = choose_files(all_pdfs)
-    if not selected:
+    all_pdf_names = load_pdf_names(DOCS_PATH)
+    selected_names = choose_files(all_pdf_names)
+    if not selected_names:
         return
-    
-    total_chars = sum(len(text) for text in selected.values())
-    print(f" > Loaded {len(selected)} selected PDFs for topic modeling.")
+
+    selected_pdfs = load_selected_pdfs(DOCS_PATH, selected_names)
+    if not selected_pdfs:
+        print("No PDF content could be loaded. Exiting.")
+        return
+
+    total_chars = sum(len(text) for text in selected_pdfs.values())
+    print(f" > Loaded {len(selected_pdfs)} selected PDFs for topic modeling.")
     print(f" > Total content: {total_chars:,} characters")
 
     print("\n=== Running Topic Modeling (LSA & LDA) ===")
 
+
     # Adjust min_df based on number of documents to avoid sklearn errors
-    n_docs = len(selected)
+    n_docs = len(selected_pdfs)
     adjusted_min_df = min(MIN_DF, max(1, n_docs // 2)) if n_docs > 1 else 1
     adjusted_max_df = MAX_DF if n_docs > 2 else 1.0
     
@@ -141,8 +173,9 @@ def main():
             ngram_range=NGRAM_RANGE,
             min_df=adjusted_min_df,
             max_df=adjusted_max_df,
+            custom_stopwords=CUSTOM_STOP_WORDS,
         )
-        lsa_res = lsa.run(selected)
+        lsa_res = lsa.run(selected_pdfs)
         print_model_results("LSA", lsa_res, top_terms_preview=min(10, N_TOP_TERMS))
 
     # LDA
@@ -157,8 +190,9 @@ def main():
             ngram_range=NGRAM_RANGE,
             min_df=adjusted_min_df,
             max_df=adjusted_max_df,
+            custom_stopwords=CUSTOM_STOP_WORDS,
         )
-        lda_res = lda.run(selected)
+        lda_res = lda.run(selected_pdfs)
         print_model_results("LDA", lda_res, top_terms_preview=min(10, N_TOP_TERMS))
 
 

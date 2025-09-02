@@ -149,7 +149,6 @@ def main():
     modeling_service = LLMTopicModelingService(
         llm=llm,
         graph_service=graph_service,
-        max_topics_in_prompt=40,
         n_topics=5,
         n_top_terms_per_doc=10,
         min_confidence=0.9,

@@ -32,5 +32,5 @@ share/python-wheels/
 MANIFEST
 
 # Data
-data/cso_topics.faiss
-data/cso_labels.json
+cso_topics.faiss
+cso_labels.json
