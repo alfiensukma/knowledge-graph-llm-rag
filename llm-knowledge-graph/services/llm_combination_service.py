@@ -30,8 +30,8 @@ class LLMCombinationService:
             ("system",
                 """Anda adalah asisten yang tepat dan lengkap dalam menghasilkan semua kombinasi dari daftar topik.
                 Instruksi:
-                - Input: paper_id, topics (list string), max_k (batas ukuran kombinasi).
-                - Kembalikan semua kombinasi ukuran 1..max_k (tidak boleh ada yang terlewat).
+                - Input: paper_id, topics (list string).
+                - Kembalikan SEMUA kemungkinan kombinasi (ukuran 1 hingga N, di mana N adalah jumlah total topik).
                 - Jangan menambahkan item di luar 'topics'.
                 - Jangan ada duplikasi kombinasi.
                 - Jawab hanya dengan JSON yang valid.
@@ -41,7 +41,6 @@ class LLMCombinationService:
             ("human",
                 """paper_id={paper_id}
                 topics={topics}
-                max_k={max_k}
                 Kembalikan JSON persis dengan format:
                 {{"paper_id":"{paper_id}", "combos":[["item1"],["item2"],["item1","item2"], ...]}}
             """)
@@ -65,8 +64,7 @@ class LLMCombinationService:
         self,
         paper_id: str,
         topics: List[str],
-        combos: List[List[str]],
-        max_k: int
+        combos: List[List[str]]
     ) -> List[List[str]]:
         topic_set: Set[str] = set(topics)
         cleaned: Set[Tuple[str, ...]] = set()
@@ -78,8 +76,6 @@ class LLMCombinationService:
             if not canon:
                 continue
             if not set(canon).issubset(topic_set):
-                continue
-            if len(canon) < 1 or len(canon) > max_k:
                 continue
             cleaned.add(tuple(canon))
 
@@ -112,7 +108,6 @@ class LLMCombinationService:
     def generate_combinations_for_paper(
         self,
         paper_id: str,
-        max_k: Optional[int] = None,
         repair_missing: bool = False
     ) -> Optional[List[List[str]]]:
         topics = self._fetch_topics_for_paper(paper_id)
@@ -120,13 +115,10 @@ class LLMCombinationService:
             print(f"[Step1] paperId={paper_id}\n         combinations=[]  (No topics found)")
             return None
 
-        k = min(len(topics), max_k) if max_k else len(topics)
-
         #LLM
         raw = self.combo_chain.invoke({
             "paper_id": paper_id,
-            "topics": topics,
-            "max_k": k
+            "topics": topics
         })
 
         if isinstance(raw, ComboResult):
@@ -142,9 +134,10 @@ class LLMCombinationService:
                 return None
 
         # Validasi pasca-LLM
-        combos = self._validate_and_canonicalize_combos(paper_id, topics, llm_combos, k)
+        combos = self._validate_and_canonicalize_combos(paper_id, topics, llm_combos)
 
         if repair_missing:
+            k = len(topics)
             full = set()
             for r in range(1, k + 1):
                 for combo in itertools.combinations(topics, r):
@@ -162,11 +155,10 @@ class LLMCombinationService:
     def generate_combinations_for_papers(
         self,
         paper_ids: List[str],
-        max_k: Optional[int] = None,
         repair_missing: bool = False
     ) -> Dict[str, List[List[str]]]:
         out: Dict[str, List[List[str]]] = {}
         for pid in sorted(set(paper_ids)):
-            combos = self.generate_combinations_for_paper(pid, max_k=max_k, repair_missing=repair_missing)
+            combos = self.generate_combinations_for_paper(pid, repair_missing=repair_missing)
             out[pid] = combos or []
         return out

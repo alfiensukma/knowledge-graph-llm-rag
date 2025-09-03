@@ -135,7 +135,7 @@ def main():
     RANDOM_STATE = 42
     RUN_LSA = True
     RUN_LDA = True
-    CUSTOM_STOP_WORDS = ['et', 'al', 'et al', 'fig', 'figure', 'table', 'doi', 'https', 'www', 'org']
+    CUSTOM_STOP_WORDS = ['et', 'al', 'et al', 'fig', 'figure', 'table', 'doi', 'https', 'www', 'org', '000']
 
     all_pdf_names = load_pdf_names(DOCS_PATH)
     selected_names = choose_files(all_pdf_names)

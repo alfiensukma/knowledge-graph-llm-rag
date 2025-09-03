@@ -17,8 +17,7 @@ def main():
     svc = LLMAprioriService(llm=llm, graph_service=graph_service)
     svc.build_llm_apriori_graph(
         min_support_count=2,
-        min_confidence=0.7,
-        max_itemset_size=5
+        min_confidence=0
     )
 
 if __name__ == "__main__":

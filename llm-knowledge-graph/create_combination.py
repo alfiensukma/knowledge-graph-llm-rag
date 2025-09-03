@@ -146,14 +146,14 @@ def main():
     # Generate combinations for the selected paper (max_k=5)
     print("\nGenerating topic combinations...")
     try:
-        result = svc.generate_combinations_for_paper(paper_id, max_k=5, repair_missing=True)
+        result = svc.generate_combinations_for_paper(paper_id, repair_missing=True)
         if result:
             print(f"\nSuccessfully generated {len(result)} combinations for paper: {filename}")
 
             topics_count = len(svc._fetch_topics_for_paper(paper_id))
-            expected_total = sum(1 for r in range(1, min(topics_count, 5) + 1) 
+            expected_total = sum(1 for r in range(1, topics_count + 1) 
                             for _ in __import__('itertools').combinations(range(topics_count), r))
-            print(f"Expected combinations (max_k=5): {expected_total}")
+            print(f"Expected combinations : {expected_total}")
             print(f"Actual generated: {len(result)}")
             if len(result) < expected_total:
                 print(f"Missing: {expected_total - len(result)} combinations")

@@ -1,9 +1,11 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple, Set
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 import re
 import json
+from itertools import combinations, chain
+from collections import defaultdict
 
 def _normalize_item(s: str) -> str:
     if not isinstance(s, str):
@@ -29,42 +31,46 @@ class AssociationRule(BaseModel):
 class LLMAprioriOutput(BaseModel):
     frequent_itemsets: List[FrequentItemset] = Field(description="Himpunan item-set yang dianggap sering.")
     rules: List[AssociationRule] = Field(description="Aturan asosiasi (A -> B) yang relevan.")
+    
+class SupportCountResult(BaseModel):
+    items: List[str]
+    support_count: int
+
+class LLMSupportCountOutput(BaseModel):
+    counts: List[SupportCountResult]
 
 class LLMAprioriService:
     def __init__(self, llm, graph_service):
         self.llm = llm
         self.graph_service = graph_service
 
-        self.prompt = ChatPromptTemplate.from_messages([
+        self.support_counter_prompt = ChatPromptTemplate.from_messages([
             ("system",
-            """Anda adalah analis data yang menjalankan algoritma seperti Apriori di atas daftar transaksi topik paper.
-            Instruksi:
-            - Input adalah daftar transaksi: [{{"paper_id": "...", "topics": ["topic a", "topic b", ...]}}, ...].
-            - Hitung frequent itemsets (ukuran 1..max_k) berbasis support_count minimal (min_support_count).
-            - Pastikan semua kombinasi topik dari transaksi input dipertimbangkan, termasuk topik seperti 'large language model' dan 'object-oriented programming'.
-            - Normalisasi topik serupa (misalnya, 'large language models' = 'large language model') menggunakan lowercase dan hapus duplikasi.
-            - Hasilkan aturan asosiasi A->B dengan confidence >= min_confidence. Hindari aturan trivial (antecedent atau consequent kosong).
-            - Jika ragu pada rasio support, tetap isi support_count dengan benar (jumlah paper yang memuat seluruh item) dan support = support_count/total_papers.
-            - Kembalikan JSON sesuai skema.
-            """),
+             """Anda adalah asisten penghitung yang sangat akurat. Tugas Anda SATU: menghitung berapa kali setiap 
+                'candidate_itemset' muncul dalam daftar 'transactions'.
+             - Sebuah itemset dianggap muncul dalam sebuah transaksi jika SEMUA item di dalamnya adalah subset dari 
+                topik transaksi tersebut.
+             - Normalisasi item tidak diperlukan, data sudah bersih.
+             - Kembalikan HANYA objek JSON yang valid dengan daftar hasil.
+             - Jika sebuah kandidat tidak pernah muncul, support_count-nya adalah 0.
+             """),
             ("human",
-            """Transaksi paper (JSON): {transactions}
-            Parameter:
-            - total_papers={total_papers}
-            - min_support_count={min_support_count}
-            - min_confidence={min_confidence}
-            - max_itemset_size={max_itemset_size}
-
-            Kembalikan JSON dengan format:
-            {{
-            "frequent_itemsets": [{{"items": [...], "support_count": 3, "support": 0.2}}, ...],
-            "rules": [{{"antecedent": [...], "consequent": [...], "support": 0.15, "confidence": 0.7}}, ...]
-            }}
-            """)
+             """Berikut adalah data dan tugasnya:
+             Transactions:
+             ```json
+             {transactions}
+             ```
+             Candidate Itemsets to Count:
+             ```json
+             {candidate_itemsets}
+             ```
+             Kembalikan JSON dengan format: {{"counts": [{{"items": ["item1", "item2"], "support_count": 5}}, ...]}}
+             """)
         ])
-        self.parser = JsonOutputParser(pydantic_object=LLMAprioriOutput)
-        self.chain = self.prompt | self.llm | self.parser
-
+        
+        self.support_counter_parser = JsonOutputParser(pydantic_object=LLMSupportCountOutput)
+        self.support_counter_chain = self.support_counter_prompt | self.llm | self.support_counter_parser
+        
     def _fetch_transactions(self) -> List[Dict[str, Any]]:
         query = """
         MATCH (p:Paper)-[:HAS_TOPIC]->(t:Topic)
@@ -80,69 +86,141 @@ class LLMAprioriService:
         print(f"  > Loaded {len(tx)} transactions from Neo4j.")
         return tx
     
-    def _run_llm_apriori(self,
-                         transactions: List[Dict[str, Any]],
-                         min_support_count: int,
-                         min_confidence: float,
-                         max_itemset_size: int) -> LLMAprioriOutput:
-        total_papers = len(transactions)
-        print("  > Sending transactions to LLM for Apriori-like mining...")
+    def _generate_candidates(self, Lk_minus_1: Set[frozenset], k: int) -> Set[frozenset]:
+        candidates = set()
+        for i1 in Lk_minus_1:
+            for i2 in Lk_minus_1:
+                if len(i1.union(i2)) == k:
+                    candidates.add(i1.union(i2))
+        return candidates
 
-        raw = self.chain.invoke({
-            "transactions": transactions,
-            "total_papers": total_papers,
-            "min_support_count": min_support_count,
-            "min_confidence": min_confidence,
-            "max_itemset_size": max_itemset_size
-        })
+    def _run_hybrid_apriori_loop(self,
+                                 transactions: List[Dict[str, Any]],
+                                 min_support_count: int) -> List[FrequentItemset]:
+        
+        all_frequent_itemsets = []
+        
+        item_counts = defaultdict(int)
+        for tx in transactions:
+            for item in tx['topics']:
+                item_counts[item] += 1
+        
+        L1_sets = set()
+        for item, count in item_counts.items():
+            if count >= min_support_count:
+                L1_sets.add(frozenset([item]))
+                all_frequent_itemsets.append(FrequentItemset(items=[item], support_count=count))
+        
+        print(f"  > [Python] Found {len(L1_sets)} frequent 1-itemsets (L1).")
 
-        # Normalisasi output ke Pydantic model
+        k = 2
+        Lk_minus_1 = L1_sets
+        while Lk_minus_1:
+            Ck = self._generate_candidates(Lk_minus_1, k)
+            if not Ck:
+                break
+            
+            print(f"  > [Python] Generated {len(Ck)} candidates for C{k}.")
+            
+            candidate_list_for_llm = [sorted(list(c)) for c in Ck]
+            print(f"  > [LLM] Sending {len(candidate_list_for_llm)} candidates to LLM for support counting...")
+            
+            llm_output = self.support_counter_chain.invoke({
+                "transactions": json.dumps(transactions, indent=2),
+                "candidate_itemsets": json.dumps(candidate_list_for_llm, indent=2)
+            })
+            
+            support_counts_map = {frozenset(res['items']): res['support_count'] for res in llm_output['counts']}
+
+            Lk = set()
+            for candidate in Ck:
+                count = support_counts_map.get(candidate, 0)
+                if count >= min_support_count:
+                    Lk.add(candidate)
+                    all_frequent_itemsets.append(FrequentItemset(items=sorted(list(candidate)), support_count=count))
+            
+            print(f"  > [Python] Filtered to {len(Lk)} frequent {k}-itemsets (L{k}).")
+
+            if not Lk:
+                break
+            
+            Lk_minus_1 = Lk
+            k += 1
+            
+        return all_frequent_itemsets
+
+    def _generate_rules(self, 
+                        all_frequent_itemsets: List[FrequentItemset], 
+                        min_confidence: float) -> List[AssociationRule]:
+        
+        print("  > [Python] Generating association rules...")
+        itemset_support_map = {frozenset(it.items): it.support_count for it in all_frequent_itemsets}
+        rules = []
+
+        for itemset in all_frequent_itemsets:
+            if len(itemset.items) < 2:
+                continue
+            
+            all_subsets = chain.from_iterable(combinations(itemset.items, r) for r in range(1, len(itemset.items)))
+            
+            for antecedent_tuple in all_subsets:
+                antecedent = frozenset(antecedent_tuple)
+                consequent = frozenset(itemset.items) - antecedent
+                
+                if not antecedent or not consequent:
+                    continue
+                
+                support_itemset = itemset_support_map.get(frozenset(itemset.items), 0)
+                support_antecedent = itemset_support_map.get(antecedent, 0)
+                
+                if support_antecedent == 0:
+                    continue
+                    
+                confidence = support_itemset / support_antecedent
+                
+                if confidence >= min_confidence:
+                    total_papers = len(self._fetch_transactions()) # Re-fetch for total count
+                    rules.append(AssociationRule(
+                        antecedent=sorted(list(antecedent)),
+                        consequent=sorted(list(consequent)),
+                        support=support_itemset / total_papers,
+                        confidence=confidence
+                    ))
+        print(f"  > [Python] Found {len(rules)} rules meeting min_confidence.")
+        return rules
+
+    def build_llm_apriori_graph(self,
+                                min_support_count: int,
+                                min_confidence: float) -> Optional[Dict[str, Any]]:
         try:
-            if isinstance(raw, LLMAprioriOutput):
-                return raw
-            if isinstance(raw, str):
-                raw = json.loads(raw)
-            if isinstance(raw, dict):
-                return LLMAprioriOutput.model_validate(raw)
-            raise TypeError(f"Unexpected LLM output type: {type(raw)}")
+            transactions = self._fetch_transactions()
+            if not transactions:
+                return {"transactions": 0, "itemsets": 0, "rules": 0}
+
+            all_frequent_itemsets = self._run_hybrid_apriori_loop(transactions, min_support_count)
+            
+            total_papers = len(transactions)
+            for it in all_frequent_itemsets:
+                it.support = it.support_count / total_papers
+
+            all_rules = self._generate_rules(all_frequent_itemsets, min_confidence)
+
+            self._persist_frequent_itemsets(all_frequent_itemsets)
+            self._persist_rules(all_rules)
+
+            summary = {
+                "transactions": len(transactions),
+                "itemsets": len(all_frequent_itemsets),
+                "rules": len(all_rules)
+            }
+            print(f"  > Hybrid Apriori summary: {summary}")
+            return summary
+
         except Exception as e:
-            print(f"  > Failed to parse LLM output into LLMAprioriOutput: {e}")
-            raise
-
-    def _print_step2_frequent_itemsets(self, itemsets: List[FrequentItemset]):
-        if not itemsets:
-            print("[Step2] No frequent itemsets.")
-            return
-        data = sorted(
-            itemsets,
-            key=lambda it: (it.support_count, -len(it.items), it.items)
-        )
-        for it in data:
-            print(f"[Step2] itemset={it.items}, paperCount={it.support_count}, length={len(it.items)}")
-
-    def _print_step3_candidate_rules(self, itemsets: List[FrequentItemset], min_support_count: int = 2):
-        filt = [it for it in itemsets if it.support_count >= min_support_count]
-        if not filt:
-            print(f"[Step3] No itemsets with support_count >= {min_support_count}.")
-            return
-
-        max_len = max(len(it.items) for it in filt)
-        max_sets = [it for it in filt if len(it.items) == max_len]
-        if not max_sets or max_len < 2:
-            print(f"[Step3] No candidate rules from max n-itemset (max_len={max_len}).")
-            return
-
-        # generate semua subset A -> B untuk tiap base itemset terbesar
-        from itertools import combinations
-        for it in max_sets:
-            items = it.items
-            for r in range(1, len(items)):
-                for A in combinations(items, r):
-                    A = list(A)
-                    B = [x for x in items if x not in A]
-                    if not B:
-                        continue
-                    print(f"[Step3] base_itemset={items}, antecedent={A}, consequent={B}")
+            print(f"  > Failed to build Hybrid Apriori graph: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def _persist_frequent_itemsets(self, itemsets: List[FrequentItemset]):
         payload = []
@@ -196,39 +274,3 @@ class LLMAprioriService:
         """
         self.graph_service.graph.query(cypher, {"rules": payload})
         print(f"  > Persisted {len(payload)} rules (LeftTopicSet)-[:RULES]->(RightTopicSet).")
-
-    def build_llm_apriori_graph(self,
-                                min_support_count: int,
-                                min_confidence: float,
-                                max_itemset_size: int) -> Optional[Dict[str, Any]]:
-        try:
-            transactions = self._fetch_transactions()
-            if not transactions:
-                print("  > No transactions available in the database.")
-                return {"transactions": 0, "itemsets": 0, "rules": 0}
-
-            output: LLMAprioriOutput = self._run_llm_apriori(
-                transactions=transactions,
-                min_support_count=min_support_count,
-                min_confidence=min_confidence,
-                max_itemset_size=max_itemset_size
-            )
-
-            self._print_step2_frequent_itemsets(output.frequent_itemsets)
-            self._print_step3_candidate_rules(output.frequent_itemsets, min_support_count=min_support_count)
-
-            # Persist hasil LLM
-            self._persist_frequent_itemsets(output.frequent_itemsets)
-            self._persist_rules(output.rules)
-
-            summary = {
-                "transactions": len(transactions),
-                "itemsets": len(output.frequent_itemsets),
-                "rules": len(output.rules)
-            }
-            print(f"  > LLM Apriori summary: {summary}")
-            return summary
-
-        except Exception as e:
-            print(f"  > Failed to build LLM Apriori graph: {e}")
-            return None
