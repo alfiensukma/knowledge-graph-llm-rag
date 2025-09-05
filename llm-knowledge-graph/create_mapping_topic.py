@@ -130,6 +130,7 @@ def main():
     NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    MAX_TOPICS_TO_EXTRACT = 15
 
     print("Initializing services...")
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0)
@@ -160,7 +161,10 @@ def main():
     # Topic processing
     print("\nProcessing topics...")
     try:
-        topics = topic_handler.get_validated_topics_for_text(full_text)
+        topics = topic_handler.get_validated_topics_for_text(
+            full_text, 
+            max_topics=MAX_TOPICS_TO_EXTRACT
+        )
         print(f"Validated topics ({len(topics)}): {topics}")
         
         if topics:

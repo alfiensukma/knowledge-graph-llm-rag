@@ -20,7 +20,7 @@ class TopicExtractionService:
         self.parser = JsonOutputParser(pydantic_object=List[str])
         self.validate_parser = JsonOutputParser(pydantic_object=dict)
         self.extract_prompt = ChatPromptTemplate.from_template(
-            """Berdasarkan teks paper akademik berikut, identifikasi hingga **10 topik ilmiah utama** yang dibahas.
+            """Berdasarkan teks paper akademik berikut, identifikasi hingga **{max_topics} topik ilmiah utama** yang dibahas.
             Fokus pada konsep ilmiah spesifik dalam ilmu komputer, contohnya 'Content-Based Filtering', 'Information 
             Retrieval', 'Text Mining', atau 'Machine Learning'. Hindari topik umum seperti 'ilmu komputer' dan/atau 
             'computer science'. Kembalikan topik dalam bentuk daftar JSON berisi string. Teks: ```{text}```\n\nJSON Output: """
@@ -72,10 +72,13 @@ class TopicExtractionService:
             print(f"  > Error fetching topics/hierarchy from Neo4j: {e}")
             return [], []
 
-    def get_validated_topics_for_text(self, full_text: str) -> list:
+    def get_validated_topics_for_text(self, full_text: str, max_topics: int) -> list:
         """Extracts candidate topics with LLM and validates them against CSO topics."""
         try:
-            candidate_topics = self.extract_chain.invoke({"text": full_text})
+            candidate_topics = self.extract_chain.invoke({
+                "text": full_text,
+                "max_topics": max_topics
+            })
             print(f"  > LLM candidate topics: {candidate_topics}")
         except Exception as e:
             print(f"  > LLM topic extraction failed: {e}")

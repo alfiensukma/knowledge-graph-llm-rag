@@ -273,6 +273,12 @@ Make sure all required PDF files have been generated into nodes
 python run_llm_apriori.py
 ```
 
+you can also changing method, use full LLMs or Hybrid (with itertools python) in `run_llm_apriori.py`.
+
+```bash
+APRIORI_MODE = "hybrid" # "hybrid" or "full"
+```
+
 > The Apriori logic (frequent itemsets, rules) is **driven by LLM**; Cypher is used only to persist the results into Neo4j.
 
 #### Expected Result
