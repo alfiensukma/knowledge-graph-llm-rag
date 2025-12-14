@@ -10,13 +10,15 @@ Build a **Computer Science** knowledge graph from PDFs using **LLMs**, store it 
 - [How to Run](#how-to-run)
   - [1) Create Topics from CSO (RDF)](#1-create-topics-from-cso-rdf)
   - [2) Create Paper](#2-create-paper)
-  - [3) Topic Mapping using LLMs](#3-topic-mapping-using-llms)
-  - [4) Topic Modeling (LDA or LSA) using LLMs](#4-topic-modeling-lda-or-lsa-using-llms)
-  - [5) Topic Modeling (LDA or LSA)](#5-topic-modeling-lda-or-lsa)
-  - [6) Topic Combinations using LLMs](#6-topic-combinations-using-llms)
+  - [3) Topic Mapping and Modeling using LLMs, LDA, or LSA](#3-topic-mapping-and-modeling-using-llms,-lda,-or-lsa)
+  - [4) Topic Modeling (LDA or LSA like) using LLMs](#4-topic-modeling-lsa-or-lda-like-using-llms)
+  - [5) Topic Combinations using LLMs](#5-topic-combinations-using-llms)
+  - [6) Apriori mining via GDS Cypher Query](#6-apriori-mining-via-gds-cypher-query)
   - [7) Apriori-like mining via LLM](#7-apriori-like-mining-via-llm)
-  - [8) Recommendations (LLM Apriori-like)](#8-recommendations-llm-apriori-like)
-  - [9) Chatbot (Streamlit)](#9-chatbot-streamlit)
+  - [8) Sanchez Similarity Algoritm (Ontology-based Semantic Similarity)](#8-sanchez-similarity)
+  - [9) Sanchez Comparation (Optional)](#9-sanchez-comparation)
+  - [10) Recommendations (LLM Apriori-like)](#8-recommendations-llm-apriori-like)
+  - [11) Chatbot (Streamlit)](#9-chatbot-streamlit)
 - [Script Index](#script-index)
 - [Neo4j Notes](#neo4j-notes)
 - [Troubleshooting](#troubleshooting)
@@ -157,9 +159,9 @@ Graph:
 
 ---
 
-### 3) Topic Mapping using LLMs
+### 3) Topic Mapping and Modeling using LLMs, LDA, or LSA
 
-Links topics via LLM (validated against CSO) → `(:Paper)-[:HAS_TOPIC]->(:Topic)`.
+Runs topic modeling using LLMs or classical topic modeling **LDA** or **LSA** (scikit-learn) then links topics (validated against CSO) → `(:Paper)-[:HAS_TOPIC]->(:Topic)`.
 
 #### Prerequisites
 
@@ -171,24 +173,26 @@ Ensure you're in the correct directory and venv is active:
 - Please note: You can ONLY process ONE selected Paper at a time. This project uses a limited tokens (version Gemini).
 - You can select an UNPROCESSED Paper from list to generate topic mapping.
 - The list of papers that appears only shows PDFs that have been generated as nodes. Therefore, repeat step 2 to generate a new paper.
+- You can choose to do topic mapping or not after successfully getting extracted topics.
 
 #### Run this command
 
 ```bash
-python create_mapping_topic.py
+python run_topic_mapping.py
 ```
 
 #### Expected Result
-<img width="1037" height="641" alt="result_topic_mapping" src="https://github.com/user-attachments/assets/c99e28d9-d5ec-459f-9b18-02f1a0aea85a" />
+<img width="742" height="332" alt="image" src="https://github.com/user-attachments/assets/4ffd2da9-ef45-40c2-a684-bfa56aa82f19" />
+<img width="438" height="361" alt="image" src="https://github.com/user-attachments/assets/1ed07e26-6b0f-4dec-8c47-cd50ceae0b63" />
 
 Graph:
 <img width="1065" height="524" alt="result topic_mapping" src="https://github.com/user-attachments/assets/65cdd54f-7315-4a9c-9dcb-8bdb85659525" />
 
 ---
 
-### 4) Topic Modeling (LDA or LSA) using LLMs
+### 4) Topic Modeling (LDA or LSA like) using LLMs
 
-Runs topic modeling **LDA** or **LSA** on your PDFs and prints results using LLM.
+Runs topic modeling **LDA** or **LSA like**  on your PDFs and prints results using LLM.
 
 #### Prerequisites
 
@@ -206,27 +210,7 @@ python run_llm_topic_modeling.py
 
 ---
 
-### 5) Topic Modeling (LDA or LSA)
-
-Runs classical topic modeling **LDA** or **LSA** (scikit-learn) on your PDFs and prints results.
-
-#### Prerequisites
-
-Ensure you're in the correct directory and venv is active:
-<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/a9a5d524-1ef8-4fd7-82a4-225ecbfe25aa" />
-
-#### Run this command
-
-```bash
-python run_topic_modeling.py
-```
-
-#### Expected Result
-<img width="1058" height="875" alt="image" src="https://github.com/user-attachments/assets/386c83b1-636a-4216-821a-834f82dba5af" />
-
----
-
-### 6) Topic Combinations using LLMs
+### 5) Topic Combinations using LLMs
 
 Generate topic combinations per paper → creates `(:TopicCombination)` and `(:Paper)-[:HAS_TOPIC_COMBINATION]->(:TopicCombination)`:
 
@@ -251,6 +235,33 @@ python create_combination.py
 
 Graph:
 <img width="519" height="465" alt="result_combination_graph" src="https://github.com/user-attachments/assets/47febfaa-ecff-4df1-bd88-4df77e34bfbd" />
+
+---
+
+### 6) Apriori mining via GDS Cypher Query
+
+Run Apriori-like mining via GDS (Graph Data Science) Cypher Query → creates `(:FrequentTopicSet)`, `(:LeftTopicSet)-[:RULES]->( :RightTopicSet)` with `support` & `confidence`:
+
+#### Prerequisites
+
+Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/2ae77607-3553-4fff-ae40-d4828fac2fb4" />
+
+#### Make sure there is a Paper node and Topic node
+
+Make sure all required PDF files have been generated into nodes
+
+#### Run this command
+
+```bash
+python run_apriori.py
+```
+
+#### Expected Result
+<img width="648" height="394" alt="image" src="https://github.com/user-attachments/assets/9add5566-73f7-4562-bf67-c91f5ed8c84f" />
+
+Graph:
+<img width="509" height="358" alt="image" src="https://github.com/user-attachments/assets/16cf0e8c-f9f9-4ef3-8148-ec00751a9775" />
 
 ---
 
@@ -289,7 +300,71 @@ Graph:
 
 ---
 
-### 8) Recommendations (LLM Apriori-like)
+### 8) Sanchez Similarity Algoritm (Ontology-based Semantic Similarity)
+
+Looking for the closeness of meaning in the concepts of ontology and taxonomy
+
+#### Prerequisites
+
+Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/682a5dde-3166-4304-90fa-9e58c7a745c6" />
+
+#### Make sure there is a Paper node and Topic node
+
+Make sure all required PDF files have been generated into nodes
+
+#### Make sure you have run the topic combination process and Apriori Mining
+
+because this process requires FrequentTopicSet nodes
+
+#### Run this command
+
+```bash
+python run_sanchez.py {filename}
+```
+
+Example:
+<img width="593" height="61" alt="image" src="https://github.com/user-attachments/assets/4dafc907-f48a-414f-8682-08fe3281d098" />
+
+> lsa-sanchez is the potential name of the lsa-sanchez.json file. This file is located in the llm-knowledge-graph/data/sanchez-result folder.
+
+#### Expected Result
+<img width="560" height="198" alt="image" src="https://github.com/user-attachments/assets/b0ee2936-dc12-4f6e-872d-0a448b0e4a51" />
+<img width="346" height="190" alt="image" src="https://github.com/user-attachments/assets/7c7886ec-01e8-4e8e-a91b-e9745805a24e" />
+
+---
+
+### 9) Sanchez Comparation (Optional)
+
+compare sanchez similarity results from various files
+
+#### Prerequisites
+
+Ensure you're in the correct directory and venv is active:
+<img width="753" height="32" alt="Screenshot 2025-08-25 080019" src="https://github.com/user-attachments/assets/682a5dde-3166-4304-90fa-9e58c7a745c6" />
+
+#### Make sure to have a json file in sanchez-result
+<img width="346" height="190" alt="image" src="https://github.com/user-attachments/assets/ba31e313-eb28-449b-a3ba-f54c9137e294" />
+
+> There are three files containing the Sanchez similarity results obtained from different databases. I recommend using multiple Neo4J databases from the start of the topic mapping process (LLM, LSA, LDA). The goal is to avoid the HAS_TOPIC relationship, which can lead to conflicts.
+
+#### Run this command
+
+```bash
+python run_sanchez_comparison.py
+```
+
+Enter the file name of each method without adding the extension. Example: Enter the file name of the LLM method: llm-sanchez
+
+Example:
+<img width="638" height="124" alt="image" src="https://github.com/user-attachments/assets/2fd75aaf-17d7-45f4-adee-15a70279299e" />
+
+#### Expected Result
+<img width="841" height="475" alt="image" src="https://github.com/user-attachments/assets/1dc0a928-3566-45bb-a965-145f07c7fec2" />
+
+---
+
+### 10) Recommendations (LLM Apriori-like)
 
 Recommends papers based on the learned co-occurrence patterns:
 
@@ -314,7 +389,7 @@ python run_recommendation.py
 
 ---
 
-### 9) Chatbot (Streamlit)
+### 11) Chatbot (Streamlit)
 
 Run embedding first
 
@@ -348,11 +423,13 @@ Open your browser at `http://localhost:8501`.
 |---|---|
 | `create_topic_from_cso.py` | Imports **CSO** topics + hierarchy into Neo4j. |
 | `create_paper.py` | Creates `(:Paper)` nodes from PDFs. |
-| `create_mapping_topic.py` | Links topics (`HAS_TOPIC`) using LLM. |
-| `run_topic_modeling.py` | Runs **LDA** or **LSA** (sklearn) and prints topics/terms. |
+| `run_topic_mapping.py` | Runs topic modeling using LLMs or classical topic modeling **LDA** or **LSA** (scikit-learn) then links topics (validated against CSO) → `(:Paper)-[:HAS_TOPIC]->(:Topic)`. |
 | `run_llm_topic_modeling.py` | Runs **LDA** or **LSA** using LLMs and prints topics/terms (LSA/LDA-like). |
 | `create_combination.py` | Generates all topic combinations per paper and persists `(:TopicCombination)`. |
+| `run_apriori.py` | Run Apriori-like mining via GDS (Graph Data Science) Cypher Query |
 | `run_llm_apriori.py` | Runs **LLM Apriori-like** to create `(:FrequentTopicSet)` and association rules. |
+| `run_sanchez.py` | Looking for the closeness of meaning in the concepts of ontology and taxonomy |
+| `run_sanchez_comparison.py` | compare sanchez similarity results from various files |
 | `run_recommendation.py` | Recommends papers using the LLM Apriori-like outputs. |
 | `chatbot/main.py` | Streamlit chatbot for querying and recommending papers. |
 
@@ -379,6 +456,9 @@ Open your browser at `http://localhost:8501`.
 
 - **LLM prompt errors (missing template variables / dict has no attribute …)**  
   These happen when the LLM returns malformed JSON or the prompt placeholders aren’t escaped. The code includes guards and parsers; if it still happens, check console logs for the printed raw snippet.
+
+- **"Limit Quota" error occurred**
+  This happens because the PDF file you are using exceeds the token capacity allowed by LLM. Use a PDF file with fewer pages and allow at least a one-minute break for each process that requires processing multiple PDF files.
 
 - **Only a few topics get mapped**  
   That’s expected: mapping uses strict, CSO-guarded matching and confidence thresholds to avoid wrong links. Tune:
