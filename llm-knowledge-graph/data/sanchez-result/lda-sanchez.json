@@ -1,0 +1,9 @@
+{
+  "n_itemsets": 317,
+  "n_pairs": 50086,
+  "mean_similarity": 0.3284151259833087,
+  "pct_high_sim": 0.06235275326438526,
+  "pct_low_sim": 0.43465239787565385,
+  "name": "lda-sanchez",
+  "timestamp": "2025-10-31T03:39:21.027268Z"
+}

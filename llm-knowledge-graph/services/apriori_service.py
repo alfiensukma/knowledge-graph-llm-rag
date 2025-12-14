@@ -14,7 +14,7 @@ class AprioriService:
             print(f"  > Cypher query failed: {e}")
             raise
 
-    def create_frequent_itemsets(self, min_support_count: int = 2):
+    def create_frequent_itemsets(self, min_support_count):
         print("\n--- Step 1: Creating Frequent Itemsets ---")
         query = """
         CALL gds.degree.stream('paperGraph')
@@ -78,7 +78,7 @@ class AprioriService:
         count = result[0]['rules_created'] if result else 0
         print(f"  > Created or merged {count} association rules.")
 
-    def run_full_apriori_pipeline(self, min_support_count: int = 2):
+    def run_full_apriori_pipeline(self, min_support_count):
         print("--- Starting GDS-based Apriori Pipeline ---")
         self.create_frequent_itemsets(min_support_count)
         self.generate_association_rules(min_support_count)

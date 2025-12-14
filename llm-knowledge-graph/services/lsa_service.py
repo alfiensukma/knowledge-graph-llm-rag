@@ -6,6 +6,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import normalize
 
+MAX_TOPICS_LSA = 15
+MAX_FEATURES = 20000
+MIN_DF = 2
+MAX_DF = 0.9
+NGRAM_RANGE = (1, 2)
+RANDOM_STATE = 42
+CUSTOM_STOP_WORDS = ['et', 'al', 'et al', 'fig', 'figure', 'table', 'doi', 'https', 'www', 'org', '000', 'set', 
+                     'ad', '10', 'text', 'vol', 'pp', '2023', '2022', 'ieee', 'liu', 'use', 'wiley', 'screen']
+
 
 def _clean_text(text: str) -> str:
     if not isinstance(text, str):
@@ -15,26 +24,25 @@ def _clean_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-
 class LSAService:
 
     def __init__(
         self,
-        n_topics: int,
-        n_top_terms_per_doc: int,
-        max_features: int,
+        n_topics: int = MAX_TOPICS_LSA,
+        n_top_terms_per_doc: int = MAX_TOPICS_LSA,
+        max_features: int = MAX_FEATURES,
         stopwords_lang: str = "english",
         custom_stopwords: List[str] | None = None,
-        random_state: int = 0,
-        ngram_range=(1, 2),
-        min_df: int | float = 0,
-        max_df: float = 0,
+        random_state: int = RANDOM_STATE,
+        ngram_range = NGRAM_RANGE,
+        min_df: int | float = MIN_DF,
+        max_df: float = MAX_DF,
     ):
         self.n_topics = n_topics
         self.n_top_terms_per_doc = n_top_terms_per_doc
         self.max_features = max_features
         self.stopwords_lang = stopwords_lang
-        self.custom_stopwords = custom_stopwords
+        self.custom_stopwords = custom_stopwords or CUSTOM_STOP_WORDS
         self.random_state = random_state
         self.ngram_range = ngram_range
         self.min_df = min_df
@@ -85,7 +93,12 @@ class LSAService:
             row = doc_term_scores[i]
             idx = np.argsort(-row)[:top_k_doc]
             terms_i = [(terms[j], float(row[j])) for j in idx]
-            doc_terms.append({"filename": fn, "model": "LSA", "terms": terms_i})
+            doc_terms.append({
+                "filename": fn, 
+                "model": "LSA", 
+                "terms": terms_i,
+                "top_terms": [terms[j] for j in idx]
+            })
 
         # Get top words per topic based on |loading|
         topics = []

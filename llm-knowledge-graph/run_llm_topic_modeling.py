@@ -121,10 +121,11 @@ def main():
     NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    MODEL = os.getenv("MODEL", "gemini-2.5-flash")
 
     print("Initializing services ...")
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model=MODEL,
         google_api_key=GEMINI_API_KEY,
         temperature=0
     )

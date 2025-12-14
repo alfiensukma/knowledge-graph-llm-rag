@@ -12,6 +12,21 @@ except Exception:
 from sentence_transformers import SentenceTransformer
 from langchain_neo4j import Neo4jGraph
 
+MAX_DEPTH = 6
+ABBREV_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "cs_abbreviations.json")
+
+def _load_abbreviations() -> Dict[str, str]:
+    try:
+        with open(ABBREV_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"  > Warning: Abbreviations file not found at {ABBREV_FILE}")
+        return {}
+    except Exception as e:
+        print(f"  > Warning: Error loading abbreviations: {e}")
+        return {}
+
+_ABBREV_MAP = _load_abbreviations()
 
 def _normalize_label(text: str) -> str:
     text = (text or "").strip().lower()
@@ -39,72 +54,6 @@ def _singularize_last_token(text: str) -> str:
 def _canonical_label(label: str) -> str:
     return _singularize_last_token(_normalize_label(label))
 
-# Common CS abbreviations
-_ABBREV_MAP = {
-    "ai": "artificial intelligence",
-    "ann": "artificial neural network",
-    "rnn": "recurrent neural network",
-    "cnn": "convolutional neural network",
-    "lstm": "long short term memory",
-    "svm": "support vector machine",
-    "nlp": "natural language processing",
-    "ir": "information retrieval",
-    "mcdm": "multi criteria decision making",
-    "ahp": "analytic hierarchy process",
-    "anp": "analytic network process",
-    "topsis": "technique for order of preference by similarity to ideal solution",
-    "swara": "step wise weight assessment ratio analysis",
-    "utaut": "unified theory of acceptance and use of technology",
-    "gan": "generative adversarial network",
-    "rl": "reinforcement learning",
-    "bert": "bidirectional encoder representations from transformers",
-    "gpt": "generative pre trained transformer",
-    "oop": "object oriented programming",
-    "llm": "large language model",
-    "aco": "ant colony optimization",
-    "ar": "augmented reality",
-    "asr": "automatic speech recognition",
-    "cv": "computer vision",
-    "de": "differential evolution",
-    "dl": "deep learning",
-    "dm": "data mining",
-    "gbm": "boosting",
-    "gmm": "gaussian mixture models",
-    "gnn": "graph neural networks",
-    "hci": "human computer interaction",
-    "hmm": "hidden markov models",
-    "ica": "independent component analysis",
-    "ie": "information extraction",
-    "iot": "internet of things (iot)",
-    "kb": "knowledge bases",
-    "kg": "knowledge graphs",
-    "knn": "k nearest neighbor",
-    "kr": "knowledge representation",
-    "mt": "machine translation",
-    "mtl": "multitask learning",
-    "nb": "naive bayes",
-    "ner": "named entity recognition",
-    "nlg": "natural language generation",
-    "nlu": "natural language understanding",
-    "ocr": "optical character recognition",
-    "pca": "principal component analysis",
-    "pos": "part of speech tagging",
-    "ps": "particle swarm",
-    "pso": "particle swarm optimization",
-    "qa": "question answering",
-    "rdf": "resource description framework",
-    "rs": "recommender systems",
-    "sa": "simulated annealing",
-    "sgd": "stochastic gradient descent",
-    "sna": "social network analysis",
-    "sparql": "sparql",
-    "ssl": "semi-supervised learning",
-    "tl": "transfer learning",
-    "vae": "variational autoencoders",
-    "vr": "virtual reality",
-    "wsn": "wireless sensor networks",
-    "owl": "web ontology language",
-}
 
 def _expand_abbrev(label: str) -> str:
     raw = label.strip()
@@ -204,7 +153,7 @@ class CSOService:
             labels = json.load(f)
         return index, labels
 
-    def extract_topics_with_hierarchy(self, cso_file_path: str, max_depth: int = 4) -> Tuple[List[Dict], List[Dict]]:
+    def extract_topics_with_hierarchy(self, cso_file_path: str, max_depth: int = MAX_DEPTH) -> Tuple[List[Dict], List[Dict]]:
         print(f"Loading CSO ontology from {cso_file_path}...")
         g = rdflib.Graph()
         g.parse(cso_file_path, format="turtle")
@@ -243,7 +192,7 @@ class CSOService:
         print(f"Collected {len(topics)} topics (depth ≤ {max_depth}).")
         return topics, hierarchy
 
-    def _calculate_depth(self, topic_uri: str, hierarchy: List[Dict], max_depth: int = 4) -> int:
+    def _calculate_depth(self, topic_uri: str, hierarchy: List[Dict], max_depth: int = MAX_DEPTH) -> int:
         if not hierarchy:
             return 1
         depth = 1

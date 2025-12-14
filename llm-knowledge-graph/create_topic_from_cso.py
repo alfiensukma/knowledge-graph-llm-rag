@@ -41,7 +41,7 @@ def main():
     svc.ensure_constraints()
 
     print("Extracting CSO topics + hierarchy...")
-    topics, hierarchy = svc.extract_topics_with_hierarchy(CSO_FILE_PATH, max_depth=4)
+    topics, hierarchy = svc.extract_topics_with_hierarchy(CSO_FILE_PATH)
 
     print("Preparing (normalize + abbrev expand + dedup + cluster)...")
     processed = svc.prepare_topics(topics)

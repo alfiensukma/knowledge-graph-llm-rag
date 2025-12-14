@@ -11,10 +11,11 @@ def main():
     NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    MODEL = os.getenv("MODEL", "gemini-2.5-flash")
     
-    APRIORI_MODE = "full" # "hybrid" or "full"
+    APRIORI_MODE = "hybrid" # "hybrid" or "full"
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=GEMINI_API_KEY, temperature=0)
+    llm = ChatGoogleGenerativeAI(model=MODEL, google_api_key=GEMINI_API_KEY, temperature=0)
     graph_service = GraphService(url=NEO4J_URI, username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
 
     svc = None

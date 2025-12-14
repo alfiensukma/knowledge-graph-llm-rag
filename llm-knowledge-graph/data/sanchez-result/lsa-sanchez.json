@@ -1,0 +1,9 @@
+{
+  "n_itemsets": 52,
+  "n_pairs": 1326,
+  "mean_similarity": 0.20988950586708702,
+  "pct_high_sim": 0.07390648567119155,
+  "pct_low_sim": 0.669683257918552,
+  "name": "lsa-sanchez",
+  "timestamp": "2025-12-14T06:17:39.729839Z"
+}

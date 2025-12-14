@@ -2,9 +2,15 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from google.api_core import retry
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MODEL = os.getenv("MODEL", "gemini-2.5-flash")
 
 class LLMService:
-    def __init__(self, api_key, model_name="gemini-2.0-flash"):
+    def __init__(self, api_key, model_name=MODEL):
         self.llm = ChatGoogleGenerativeAI(
             model=model_name,
             google_api_key=api_key,
